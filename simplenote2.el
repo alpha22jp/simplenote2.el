@@ -131,7 +131,7 @@ via the usual `-*- mode: text -*-' header line."
       (with-temp-buffer
         (erase-buffer)
         (insert (format simplenote2-save-file-header (current-time-string)))
-        (recentf-dump-variable 'simplenote2-notes-info)
+        (simplenote2-dump-variable 'simplenote2-notes-info)
         (write-file simplenote2-filename-for-notes-info)
         nil)
     (error (warn "Simplenote2: %s" (error-message-string error)))))
