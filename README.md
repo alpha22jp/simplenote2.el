@@ -13,7 +13,9 @@ This package requires Emacs 23 or later. Tested on Emacs 23.3 and Emacs 24.3 on 
 
 ## Installation
 
-Just download `simplenote2.el` and put it on a directory anywhere Emacs can find.
+This package requires [request-deferred](https://github.com/tkf/emacs-request) which is also available from MELPA. Install it in advance.
+
+Then, just download `simplenote2.el` and put it on a directory anywhere Emacs can find.
 *(Installation from MELPA by package.el will be coming soon...)*
 
 ## Configuration
