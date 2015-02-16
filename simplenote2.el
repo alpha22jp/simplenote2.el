@@ -3,10 +3,9 @@
 ;; Copyright (C) 2009, 2010 Konstantinos Efstathiou <konstantinos@efstathiou.gr>
 ;; Copyright (C) 2015 alpha22jp <alpha22jp@gmail.com>
 
-;; for simplenote.el
-;; Author: Konstantinos Efstathiou <konstantinos@efstathiou.gr>
-;; for simplenote2.el
 ;; Author: alpha22jp <alpha22jp@gmail.com>
+;; Based on: simplenote.el
+;;     by Konstantinos Efstathiou <konstantinos@efstathiou.gr>
 ;; Package-Requires: ((request-deferred "0.2.0"))
 ;; Keywords: simplenote
 ;; Version: 2.0
