@@ -100,6 +100,8 @@ via the usual `-*- mode: text -*-' header line."
 
 (defvar simplenote2-filter-note-tag-list nil)
 
+(defvar simplenote2-sync-process-running nil)
+
 
 ;;; Unitity functions
 
@@ -253,7 +255,7 @@ This function returns cached token if it's cached to 'simplenote2-token,\
             (deferred:nextc it
               (lambda (res)
                 (if (request-response-error-thrown res)
-                    (error "Could not retrieve index")
+                    (progn (message "Could not get index") t)
                   (mapc (lambda (e)
                           (unless (= (cdr (assq 'deleted e)) 1)
                             (push (cons (cdr (assq 'key e))
@@ -510,6 +512,9 @@ setting."
 
 (defun simplenote2-sync-notes (&optional arg)
   (interactive "P")
+  (when simplenote2-sync-process-running
+      (error "Simplenote sync process is still running"))
+  (setq simplenote2-sync-process-running t)
   (lexical-let ((arg arg))
     (deferred:$
       ;; Step1: Sync update on local
@@ -577,41 +582,47 @@ setting."
             (simplenote2-get-index-deferred)
             (deferred:nextc it
               (lambda (index)
-                ;; Step2-2: Delete notes on local which are not included in the index.
-                (let ((keys-in-index (mapcar (lambda (e) (car e)) index)))
-                  (dolist (file (directory-files
-                                 (simplenote2-notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
-                    (let ((key (file-name-nondirectory file)))
-                      (unless (member key keys-in-index)
-                        (message "Deleted on server: %s" key)
-                        (remhash key simplenote2-notes-info)
-                        (let ((buf (get-file-buffer file)))
-                          (when buf (kill-buffer buf)))
-                        (delete-file file)))))
-                ;; Step2-3: Update notes on local which are older than that on server.
-                (let (keys-to-update)
-                  (if (not arg)
-                      (dolist (elem index)
-                        (let* ((key (car elem))
-                               (note-info (gethash key simplenote2-notes-info)))
-                          ;; Compare syncnum on server and local data.
-                          ;; If the note information isn't found, the note would be a
-                          ;; newly created note on server.
-                          (when (< (if note-info (nth 0 note-info) 0) (cdr elem))
-                            (message "Updated on server: %s" key)
-                            (push key keys-to-update))))
-                    (setq keys-to-update (mapcar (lambda (e) (car e)) index)))
-                  (deferred:$
-                    (deferred:parallel
-                      (mapcar (lambda (key) (simplenote2-get-note-deferred key))
-                              keys-to-update))
-                    (deferred:nextc it
-                      (lambda (notes)
-                        (message "Syncing all notes done")
-                        (simplenote2-save-notes-info)
-                        ;; Refresh the browser
-                        (save-excursion
-                          (simplenote2-browser-refresh))))))))))))))
+                (if (eq index t)
+                    (progn
+                      ;; Failed to get index, skip the following steps.
+                      (setq simplenote2-sync-process-running nil)
+                      (message "Failed to get index, abort sync"))
+                  ;; Step2-2: Delete notes on local which are not included in the index.
+                  (let ((keys-in-index (mapcar (lambda (e) (car e)) index)))
+                    (dolist (file (directory-files
+                                   (simplenote2-notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
+                      (let ((key (file-name-nondirectory file)))
+                        (unless (member key keys-in-index)
+                          (message "Deleted on server: %s" key)
+                          (remhash key simplenote2-notes-info)
+                          (let ((buf (get-file-buffer file)))
+                            (when buf (kill-buffer buf)))
+                          (delete-file file)))))
+                  ;; Step2-3: Update notes on local which are older than that on server.
+                  (let (keys-to-update)
+                    (if (not arg)
+                        (dolist (elem index)
+                          (let* ((key (car elem))
+                                 (note-info (gethash key simplenote2-notes-info)))
+                            ;; Compare syncnum on server and local data.
+                            ;; If the note information isn't found, the note would be a
+                            ;; newly created note on server.
+                            (when (< (if note-info (nth 0 note-info) 0) (cdr elem))
+                              (message "Updated on server: %s" key)
+                              (push key keys-to-update))))
+                      (setq keys-to-update (mapcar (lambda (e) (car e)) index)))
+                    (deferred:$
+                      (deferred:parallel
+                        (mapcar (lambda (key) (simplenote2-get-note-deferred key))
+                                keys-to-update))
+                      (deferred:nextc it
+                        (lambda (notes)
+                          (message "Syncing all notes done")
+                          (simplenote2-save-notes-info)
+                          (setq simplenote2-sync-process-running nil)
+                          ;; Refresh the browser
+                          (save-excursion
+                            (simplenote2-browser-refresh)))))))))))))))
 
 
 ;;; Simplenote browser
