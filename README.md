@@ -4,8 +4,8 @@ simplenote2.el is a new version of [simplenote.el](https://github.com/dotemacs/s
 the interaction with [Simplenote](http://simplenoteapp.com/).
 The major improvement points from the original version are
 
-* Uses Simplenote API ver.2 to interact with server which can provide the support of tags, automatic merge of notes, and some other features.
-* Accesses to server asynchronously so as not to block UI as far as possible.
+* Use of Simplenote API ver.2 to interact with server which can provide the support of tags, automatic merge of notes, and some other features.
+* Asynchronous and concurrent access to server as far as possible which brings faster sync of notes and non-blocking UI.
 
 ## Requirements
 
@@ -13,7 +13,7 @@ This package requires Emacs 23 or later. Tested on Emacs 23.3 and Emacs 24.3 on 
 
 ## Installation
 
-This package requires [request-deferred](https://github.com/tkf/emacs-request) which is also available from MELPA. Install it in advance.
+This package depends on [request-deferred](https://github.com/tkf/emacs-request) which is also available from MELPA. Install it in advance.
 
 Then, just download `simplenote2.el` and put it on a directory anywhere Emacs can find.
 *(Installation from MELPA by package.el will be coming soon...)*
