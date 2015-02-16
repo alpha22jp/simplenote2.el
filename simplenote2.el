@@ -7,6 +7,7 @@
 ;; Author: Konstantinos Efstathiou <konstantinos@efstathiou.gr>
 ;; for simplenote2.el
 ;; Author: alpha22jp <alpha22jp@gmail.com>
+;; Package-Requires: ((request-deferred "0.2.0"))
 ;; Keywords: simplenote
 ;; Version: 2.0
 
@@ -24,6 +25,14 @@
 ;; this program; if not, write to the Free Software Foundation, Inc., 51
 ;; Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
+;;; Commentary:
+
+;; `simplenote2.el' is a new version of `simplenote.el'
+;; which assists the interaction with [Simplenote](http://simplenoteapp.com/).
+;; The major improvement points from the original version are
+;; 
+;; * Use of Simplenote API ver.2 to interact with server which can provide the support of tags, automatic merge of notes, and some other features.
+;; * Asynchronous and concurrent access to server as far as possible which brings faster sync of notes and non-blocking UI.
 
 ;;; Code:
 
