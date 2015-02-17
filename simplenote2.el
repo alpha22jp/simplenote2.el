@@ -118,6 +118,21 @@ via the usual `-*- mode: text -*-' header line."
   (loop for i from 0 below (length array)
         thereis (string= tag (aref array i))))
 
+(defun simplenote2--make-tag-list ()
+  (let ((files
+	 (mapcar 'file-name-nondirectory
+		 (append
+		  (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$")
+		  (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
+	tag-list)
+    (dolist (file files)
+      (let* ((note-info (gethash file simplenote2-notes-info))
+	     (tags (nth 4 note-info)))
+	(loop for i from 0 below (length tags) do
+	      (unless (member (aref tags i) tag-list)
+		(push (aref tags i) tag-list)))))
+    tag-list))
+
 
 ;;; Save/Load notes information file
 
