@@ -51,6 +51,20 @@ There are two basic usages for `simplenote2.el`. It can be used as a
 browser for your notes (with local caching), or you can synchronize
 individual notes to the Simplenote application.
 
+### Migrate from simplenote.el package
+
+If you've used
+[simplenote.el](https://github.com/dotemacs/simplenote.el) package,
+which used version 1 of the Simplenote API, and you wish to migrate to
+`simplenote2.el`, do the following (if you haven't changed the
+variable **simplenote-directory** from the default; but if you have
+then you know what to do):
+
+    cd $HOME
+    cp -r .simplenote .simplenote2
+
+and then: <kbd>M-x simplenote2-browse RET</kdb>.
+
 ### Simplenote browser
 
 Give the command `M-x simplenote2-browse`. If this the first time you
