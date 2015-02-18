@@ -740,7 +740,7 @@ setting."
   (setq simplenote2-filter-note-tag-list nil)
   (when (not arg)
     (let (tag)
-      (setq tag (read-string "Input tag: "))
+      (setq tag (completing-read "Input tag: " simplenote2-tag-list))
       (while (not (string= tag ""))
         (push tag simplenote2-filter-note-tag-list)
         (setq tag (read-string "Input tag: ")))))
