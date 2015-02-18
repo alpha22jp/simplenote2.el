@@ -332,23 +332,27 @@ This function returns cached token if it's cached to 'simplenote2--token,\
       (deferred:nextc it
         (lambda (token)
           (deferred:$
-            (request-deferred
-             (concat simplenote2--server-url "api2/data/" key)
-             :type "POST"
-             :params (list (cons "auth" token)
-                           (cons "email" simplenote2-email))
-             :data (json-encode
-                    (list (cons "content" (simplenote2--get-file-string
-                                           (simplenote2--filename-for-note key)))
-                          (cons "version" (number-to-string
-                                           (if note-info (nth 1 note-info) 0)))
-                          (cons "modifydate"
-                                (format "%.6f"
-                                        (float-time
-                                         (simplenote2--file-mtime
-                                          (simplenote2--filename-for-note key)))))))
-             :headers '(("Content-Type" . "application/json"))
-             :parser 'json-read)
+            (let ((post-data
+                   (list (cons "content" (simplenote2--get-file-string
+                                          (simplenote2--filename-for-note key)))
+                         (cons "version" (number-to-string
+                                          (if note-info (nth 1 note-info) 0)))
+                         (cons "modifydate"
+                               (format "%.6f"
+                                       (float-time
+                                        (simplenote2--file-mtime
+                                         (simplenote2--filename-for-note key))))))))
+              ;; When locally modified flag is set, update tags and systemtags
+              (when (nth 7 note-info)
+                (push (cons "tags" (nth 4 note-info)) post-data))
+              (request-deferred
+               (concat simplenote2--server-url "api2/data/" key)
+               :type "POST"
+               :params (list (cons "auth" token)
+                             (cons "email" simplenote2-email))
+               :data (json-encode post-data)
+               :headers '(("Content-Type" . "application/json"))
+               :parser 'json-read))
             (deferred:nextc it
               (lambda (res)
                 (if (request-response-error-thrown res)
