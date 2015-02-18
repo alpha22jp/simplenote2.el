@@ -581,8 +581,9 @@ setting."
                (let* ((key (file-name-nondirectory file))
                       (note-info (gethash key simplenote2-notes-info)))
                  (when (and note-info
-                            (time-less-p (seconds-to-time (nth 3 note-info))
-                                         (simplenote2--file-mtime file)))
+                            (or (time-less-p (seconds-to-time (nth 3 note-info))
+                                             (simplenote2--file-mtime file))
+                                (nth 7 note-info)))
                    (push key keys-to-push))))
              (deferred:$
                (deferred:parallel
