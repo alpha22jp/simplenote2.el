@@ -95,6 +95,8 @@ via the usual `-*- mode: text -*-' header line."
 
 (defvar simplenote2-notes-info (make-hash-table :test 'equal))
 
+(defvar simplenote2-tag-list nil)
+
 (defvar simplenote2--filename-for-notes-info
   (concat (file-name-as-directory simplenote2-directory) ".notes-info.el"))
 
@@ -131,7 +133,7 @@ via the usual `-*- mode: text -*-' header line."
 	(loop for i from 0 below (length tags) do
 	      (unless (member (aref tags i) tag-list)
 		(push (aref tags i) tag-list)))))
-    tag-list))
+    (setq simplenote2-tag-list tag-list)))
 
 
 ;;; Save/Load notes information file
@@ -166,6 +168,7 @@ via the usual `-*- mode: text -*-' header line."
         (erase-buffer)
         (insert (format simplenote2--save-file-header (current-time-string)))
         (simplenote2--dump-variable 'simplenote2-notes-info)
+        (simplenote2--dump-variable 'simplenote2-tag-list)
         (write-file simplenote2--filename-for-notes-info)
         nil)
     (error (warn "Simplenote2: %s" (error-message-string error)))))
@@ -636,6 +639,7 @@ setting."
                         (lambda (notes)
                           (message "Syncing all notes done")
                           (simplenote2-save-notes-info)
+                          (simplenote2--make-tag-list)
                           (setq simplenote2--sync-process-running nil)
                           ;; Refresh the browser
                           (save-excursion
