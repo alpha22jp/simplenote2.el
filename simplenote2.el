@@ -638,8 +638,8 @@ setting."
                       (deferred:nextc it
                         (lambda (notes)
                           (message "Syncing all notes done")
-                          (simplenote2-save-notes-info)
                           (simplenote2--make-tag-list)
+                          (simplenote2-save-notes-info)
                           (setq simplenote2--sync-process-running nil)
                           ;; Refresh the browser
                           (save-excursion
