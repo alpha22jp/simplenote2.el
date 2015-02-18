@@ -324,34 +324,36 @@ This function returns cached token if it's cached to 'simplenote2--token,\
 (defun simplenote2--update-note-deferred (key)
   (lexical-let ((key key)
                 (note-info (gethash key simplenote2-notes-info)))
-    (unless note-info
-      (error "Could not find note info"))
     (deferred:$
-      (simplenote2--get-token-deferred)
-      (deferred:nextc it
-        (lambda (token)
-          (deferred:$
-            (request-deferred
-             (concat simplenote2--server-url "api2/data/" key)
-             :type "POST"
-             :params (list (cons "auth" token)
-                           (cons "email" simplenote2-email))
-             :data (json-encode
-                    (list (cons "content" (simplenote2--get-file-string
-                                           (simplenote2--filename-for-note key)))
-                          (cons "version" (number-to-string (nth 1 note-info)))
-                          (cons "modifydate"
-                                (format "%.6f"
-                                        (float-time
-                                         (simplenote2--file-mtime
-                                          (simplenote2--filename-for-note key)))))))
-             :headers '(("Content-Type" . "application/json"))
-             :parser 'json-read)
-            (deferred:nextc it
-              (lambda (res)
-                (if (request-response-error-thrown res)
-                    (progn (message "Could not update note %s" key) nil)
-                  (simplenote2--save-note (request-response-data res)))))))))))
+      (if (not note-info)
+          (deferred:next
+            (lambda ()
+              (message "Could not find note info: %s" key) nil))
+        (simplenote2--get-token-deferred)
+        (deferred:nextc it
+          (lambda (token)
+            (deferred:$
+              (request-deferred
+               (concat simplenote2--server-url "api2/data/" key)
+               :type "POST"
+               :params (list (cons "auth" token)
+                             (cons "email" simplenote2-email))
+               :data (json-encode
+                      (list (cons "content" (simplenote2--get-file-string
+                                             (simplenote2--filename-for-note key)))
+                            (cons "version" (number-to-string (nth 1 note-info)))
+                            (cons "modifydate"
+                                  (format "%.6f"
+                                          (float-time
+                                           (simplenote2--file-mtime
+                                            (simplenote2--filename-for-note key)))))))
+               :headers '(("Content-Type" . "application/json"))
+               :parser 'json-read)
+              (deferred:nextc it
+                (lambda (res)
+                  (if (request-response-error-thrown res)
+                      (progn (message "Could not update note %s" key) nil)
+                    (simplenote2--save-note (request-response-data res))))))))))))
 
 (defun simplenote2--create-note-deferred (file)
   (lexical-let ((file file)
