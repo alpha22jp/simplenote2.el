@@ -70,6 +70,15 @@ via the usual `-*- mode: text -*-' header line."
   :type 'function
   :group 'simplenote)
 
+(defcustom simplenote2-markdown-notes-mode 'text-mode
+  "The mode used for editing markdown notes opened from Simplenote.
+
+This option is used for editing notes which are set to
+\"Markdown formatted\" on Simplenote. If you want to use `markdown-mode'
+to edit them, set this option to `markdown-mode'."
+  :type 'function
+  :group 'simplenote)
+
 (defcustom simplenote2-note-head-size 78
   "Length of note headline in the notes list."
   :type 'integer
@@ -530,7 +539,11 @@ setting."
   (prog1 (find-file file)
     ;; Don't switch mode when set via file cookie
     (when (eq major-mode (default-value 'major-mode))
-      (funcall simplenote2-notes-mode))
+      (let* ((key (file-name-nondirectory file))
+             (note-info (gethash key simplenote2-notes-info)))
+        (funcall (if (nth 5 note-info)
+                     simplenote2-markdown-notes-mode
+                   simplenote2-notes-mode))))
     ;; Refresh notes display after save
     (add-hook 'after-save-hook
               (lambda () (save-excursion (simplenote2-browser-refresh)))
