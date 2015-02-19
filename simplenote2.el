@@ -344,6 +344,12 @@ This function returns cached token if it's cached to 'simplenote2--token,\
                                          (simplenote2--filename-for-note key))))))))
               ;; When locally modified flag is set, update tags and systemtags
               (when (nth 7 note-info)
+                (let ((system-tags []))
+                  (when (nth 5 note-info)
+                    (setf system-tags (vconcat system-tags ["markdown"])))
+                  (when (nth 6 note-info)
+                    (setf system-tags (vconcat system-tags ["pinned"])))
+                  (push (cons "systemtags" system-tags) post-data))
                 (push (cons "tags" (nth 4 note-info)) post-data))
               (request-deferred
                (concat simplenote2--server-url "api2/data/" key)
