@@ -413,8 +413,9 @@ This function returns cached token if it's cached to 'simplenote2--token,\
                      (note-info (gethash key simplenote2-notes-info)))
         (save-buffer)
         (if (and note-info
-                 (time-less-p (seconds-to-time (nth 3 note-info))
-                              (simplenote2--file-mtime file)))
+                 (or (time-less-p (seconds-to-time (nth 3 note-info))
+                                  (simplenote2--file-mtime file))
+                     (nth 7 note-info)))
             (deferred:$
               (simplenote2--update-note-deferred key)
               (deferred:nextc it
@@ -457,8 +458,9 @@ This function returns cached token if it's cached to 'simplenote2--token,\
         (lexical-let* ((key (file-name-nondirectory file))
                        (note-info (gethash key simplenote2-notes-info)))
           (if (and note-info
-                   (time-less-p (seconds-to-time (nth 3 note-info))
-                                (simplenote2--file-mtime file))
+                   (or (time-less-p (seconds-to-time (nth 3 note-info))
+                                    (simplenote2--file-mtime file))
+                       (nth 7 note-info))
                    (y-or-n-p
                     "This note appears to have been modified. Do you push it on ahead?"))
               (simplenote2-push-buffer)
