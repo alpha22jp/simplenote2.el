@@ -47,19 +47,19 @@
   "Simplenote directory."
   :type 'directory
   :safe 'stringp
-  :group 'simplenote)
+  :group 'simplenote2)
 
 (defcustom simplenote2-email nil
   "Simplenote account email."
   :type 'string
   :safe 'stringp
-  :group 'simplenote)
+  :group 'simplenote2)
 
 (defcustom simplenote2-password nil
   "Simplenote account password."
   :type 'string
   :safe 'stringp
-  :group 'simplenote)
+  :group 'simplenote2)
 
 (defcustom simplenote2-notes-mode 'text-mode
   "The mode used for editing notes opened from Simplenote.
@@ -68,7 +68,7 @@ Since notes do not have file extensions, the default mode must be
 set via this option.  Individual notes can override this setting
 via the usual `-*- mode: text -*-' header line."
   :type 'function
-  :group 'simplenote)
+  :group 'simplenote2)
 
 (defcustom simplenote2-markdown-notes-mode 'text-mode
   "The mode used for editing markdown notes opened from Simplenote.
@@ -77,19 +77,19 @@ This option is used for editing notes which are set to
 \"Markdown formatted\" on Simplenote. If you want to use `markdown-mode'
 to edit them, set this option to `markdown-mode'."
   :type 'function
-  :group 'simplenote)
+  :group 'simplenote2)
 
 (defcustom simplenote2-note-head-size 78
   "Length of note headline in the notes list."
   :type 'integer
   :safe 'integerp
-  :group 'simplenote)
+  :group 'simplenote2)
 
 (defcustom simplenote2-show-note-file-name t
   "Show file name for each note in the note list."
   :type 'boolean
   :safe 'booleanp
-  :group 'simplenote)
+  :group 'simplenote2)
 
 (defvar simplenote2-mode-hook nil)
 
