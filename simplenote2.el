@@ -106,6 +106,8 @@ to edit them, set this option to `markdown-mode'."
 
 (defvar simplenote2-tag-list nil)
 
+(defconst simplenote2-notes-info-version 1)
+
 (defvar simplenote2--filename-for-notes-info
   (concat (file-name-as-directory simplenote2-directory) ".notes-info.el"))
 
@@ -179,6 +181,7 @@ to edit them, set this option to `markdown-mode'."
         (insert (format simplenote2--save-file-header (current-time-string)))
         (simplenote2--dump-variable 'simplenote2-notes-info)
         (simplenote2--dump-variable 'simplenote2-tag-list)
+        (simplenote2--dump-variable 'simplenote2-notes-info-version)
         (write-file simplenote2--filename-for-notes-info)
         nil)
     (error (warn "Simplenote2: %s" (error-message-string error)))))
