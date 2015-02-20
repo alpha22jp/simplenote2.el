@@ -124,10 +124,12 @@ to edit them, set this option to `markdown-mode'."
     (insert-file-contents file)
     (buffer-string)))
 
-(defun simplenote2--tag-existp (tag array)
-  "Returns t if there is a string named TAG in array ARRAY, otherwise nil"
-  (loop for i from 0 below (length array)
-        thereis (string= tag (aref array i))))
+(defun simplenote2--tag-existp (tag tag-list)
+  "Returns t if there is a string named TAG in TAG-LIST, otherwise nil"
+  (if (arrayp tag-list)
+      (loop for i from 0 below (length tag-list)
+            thereis (string= tag (aref tag-list i))))
+  (if (member tag tag-list) t nil))
 
 (defun simplenote2--make-tag-list ()
   (let ((files
@@ -137,11 +139,10 @@ to edit them, set this option to `markdown-mode'."
 		  (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
 	tag-list)
     (dolist (file files)
-      (let* ((note-info (gethash file simplenote2-notes-info))
-	     (tags (nth 4 note-info)))
-	(loop for i from 0 below (length tags) do
-	      (unless (member (aref tags i) tag-list)
-		(push (aref tags i) tag-list)))))
+      (let ((note-info (gethash file simplenote2-notes-info)))
+        (dolist (tag (nth 4 note-info))
+          (unless (member tag tag-list)
+            (push tag tag-list)))))
     (setq simplenote2-tag-list tag-list)))
 
 
@@ -184,7 +185,12 @@ to edit them, set this option to `markdown-mode'."
 
 (defun simplenote2-load-notes-info ()
   (when (file-readable-p simplenote2--filename-for-notes-info)
-    (load-file simplenote2--filename-for-notes-info)))
+    (load-file simplenote2--filename-for-notes-info)
+    ;; Convert tags format from array to list for compatibility
+    (mapc (lambda (note-info)
+            (when (arrayp (nth 4 note-info))
+              (setf (nth 4 note-info) (append (nth 4 note-info) nil))))
+      (loop for v being the hash-values in simplenote2-notes-info collect v))))
 
 (defun simplenote2--save-note (note)
   "Save note information and content gotten from server."
@@ -198,7 +204,7 @@ to edit them, set this option to `markdown-mode'."
                        (cdr (assq 'version note))
                        createdate
                        modifydate
-                       (cdr (assq 'tags note))
+                       (append (cdr (assq 'tags note)) nil)
                        (simplenote2--tag-existp "markdown" systemtags)
                        (simplenote2--tag-existp "pinned" systemtags)
                        nil)
@@ -780,8 +786,7 @@ setting."
       (setq tag (completing-read "Input tag: " simplenote2-tag-list))
       (unless (or (string= tag "")
                   (simplenote2--tag-existp tag (nth 4 note-info)))
-        (setf (nth 4 note-info)
-              (vconcat (nth 4 note-info) (vector tag)))
+        (push tag (nth 4 note-info))
         (setf (nth 7 note-info) t)
         (simplenote2-browser-refresh)))))
 
@@ -906,9 +911,8 @@ setting."
                        "Undelete"
                      "Delete"))
     (widget-insert "\n    ")
-    (let ((tags (nth 4 note-info)))
-      (loop for i from 0 below (length tags) do
-            (widget-insert (format "[%s] "(aref tags i)))))
+    (dolist (tag (nth 4 note-info))
+      (widget-insert (format "[%s] " tag)))
     (widget-insert "\n")))
 
 (setq simplenote2--delete-me
