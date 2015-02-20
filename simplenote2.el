@@ -893,9 +893,9 @@ setting."
          (modify-string (format-time-string "%Y-%m-%d %H:%M:%S" modify))
          (note (simplenote2--get-file-string file))
          (note-info (gethash key simplenote2-notes-info))
-         (headline (simplenote2--note-headline note))
+         (headline (concat (if (nth 6 note-info) "*" "")
+                           (simplenote2--note-headline note)))
          (shorttext (simplenote2--note-headrest note)))
-    (when (nth 6 note-info) (widget-insert "*"))
     (widget-create 'link
                    :button-prefix ""
                    :button-suffix ""
