@@ -688,6 +688,8 @@ setting."
   (let ((map (copy-keymap widget-keymap)))
     (define-key map (kbd "g") 'simplenote2-sync-notes)
     (define-key map (kbd "q") 'quit-window)
+    (define-key map (kbd "n") 'widget-forward)
+    (define-key map (kbd "p") 'widget-backward)
     map))
 
 (defun simplenote2-mode ()
