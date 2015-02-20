@@ -542,7 +542,7 @@ This function returns cached token if it's cached to 'simplenote2--token,\
 The major mode of the resulting buffer will be set to
 `simplenote2-notes-mode' but can be overridden by a file-local
 setting."
-  (prog1 (find-file file)
+  (prog1 (find-file-other-window file)
     ;; Don't switch mode when set via file cookie
     (when (eq major-mode (default-value 'major-mode))
       (let* ((key (file-name-nondirectory file))
