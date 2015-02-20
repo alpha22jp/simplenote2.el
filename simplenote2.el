@@ -864,16 +864,7 @@ setting."
                              (simplenote2--open-note (widget-get widget :tag)))
                    headline)
     (widget-insert shorttext "\n")
-    (widget-insert "  " modify-string "\t                                      \t")
-    (widget-create 'link
-                   :tag file
-                   :value "Edit"
-                   :format "%[%v%]"
-                   :help-echo "Edit this note"
-                   :notify (lambda (widget &rest ignore)
-                             (simplenote2--open-note (widget-get widget :tag)))
-                    "Edit")
-    (widget-insert " ")
+    (widget-insert "  " modify-string "\t")
     (widget-create 'link
                    :format "%[%v%]"
                    :tag file
@@ -908,18 +899,7 @@ setting."
                              (simplenote2--open-note (widget-get widget :tag)))
                    headline)
     (widget-insert shorttext "\n")
-    (if simplenote2-show-note-file-name
-      (widget-insert "  " modify-string "\t" (propertize key 'face 'shadow) "\t")
-      (widget-insert "  " modify-string "\t"))
-    (widget-create 'link
-                   :tag file
-                   :value "Edit"
-                   :format "%[%v%]"
-                   :help-echo "Edit this note"
-                   :notify (lambda (widget &rest ignore)
-                             (simplenote2--open-note (widget-get widget :tag)))
-                    "Edit")
-    (widget-insert " ")
+    (widget-insert "  " modify-string "\t")
     (widget-create 'link
                    :format "%[%v%]"
                    :tag key
@@ -932,9 +912,12 @@ setting."
                    (if deleted
                        "Undelete"
                      "Delete"))
-    (widget-insert "\n    ")
+    (widget-insert "\t")
     (dolist (tag (nth 4 note-info))
       (widget-insert (format "[%s] " tag)))
+    (widget-insert "\n    ")
+    (when simplenote2-show-note-file-name
+      (widget-insert (propertize key 'face 'shadow)))
     (widget-insert "\n")))
 
 (setq simplenote2--delete-me
