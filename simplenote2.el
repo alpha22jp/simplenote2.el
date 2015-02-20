@@ -672,7 +672,11 @@ setting."
                           (setq simplenote2--sync-process-running nil)
                           ;; Refresh the browser
                           (save-excursion
-                            (simplenote2-browser-refresh)))))))))))))))
+                            (simplenote2-browser-refresh))))))))))))
+      (deferred:error it
+        (lambda (err)
+          (message "Sync notes error: %s" err)
+          (setq simplenote2--sync-process-running nil))))))
 
 
 ;;; Simplenote browser
