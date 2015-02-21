@@ -121,6 +121,10 @@ to edit them, set this option to `markdown-mode'."
 (defun simplenote2--file-mtime (path)
   (nth 5 (file-attributes path)))
 
+(defun simplenote2--time-to-seconds (time)
+  ;; Use "format" to omit microseconds since server doesn't accept it
+  (format "%.6f" (float-time time)))
+
 (defun simplenote2--get-file-string (file)
   (with-temp-buffer
     (insert-file-contents file)
@@ -341,21 +345,19 @@ This function returns cached token if it's cached to 'simplenote2--token,\
 
 (defun simplenote2--update-note-deferred (key)
   (lexical-let ((key key)
+                (file (simplenote2--filename-for-note key))
                 (note-info (gethash key simplenote2-notes-info)))
     (deferred:nextc
       (simplenote2--get-token-deferred)
       (lambda (token)
         (deferred:$
           (let ((post-data
-                 (list (cons "content" (simplenote2--get-file-string
-                                        (simplenote2--filename-for-note key)))
+                 (list (cons "content" (simplenote2--get-file-string file))
                        (cons "version" (number-to-string
                                         (if note-info (nth 1 note-info) 0)))
                        (cons "modifydate"
-                             (format "%.6f"
-                                     (float-time
-                                      (simplenote2--file-mtime
-                                       (simplenote2--filename-for-note key))))))))
+                             (simplenote2--time-to-seconds
+                              (simplenote2--file-mtime file))))))
             ;; When locally modified flag is set, update tags and systemtags
             (when (nth 7 note-info)
               (let ((system-tags []))
@@ -382,8 +384,8 @@ This function returns cached token if it's cached to 'simplenote2--token,\
 (defun simplenote2--create-note-deferred (file)
   (lexical-let ((file file)
                 (content (simplenote2--get-file-string file))
-                (createdate (format "%.6f" (float-time
-                                            (simplenote2--file-mtime file)))))
+                (createdate (simplenote2--time-to-seconds
+                             (simplenote2--file-mtime file))))
     (deferred:nextc
       (simplenote2--get-token-deferred)
       (lambda (token)
