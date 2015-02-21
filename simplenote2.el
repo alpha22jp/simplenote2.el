@@ -274,143 +274,138 @@ This function returns cached token if it's cached to 'simplenote2--token,\
   "Get note index from server and returns the list of note index."
   (lexical-let ((index index)
                 (mark mark))
-    (deferred:$
+    (deferred:nextc
       (simplenote2--get-token-deferred)
-      (deferred:nextc it
-        (lambda (token)
-          (deferred:$
-            (let ((params (list '("length" . "100")
-                                (cons "auth" token)
-                                (cons "email" simplenote2-email))))
-              (when mark (push (cons "mark" mark) params))
-              (request-deferred
-               (concat simplenote2--server-url "api2/index")
-               :type "GET"
-               :params params
-               :parser 'json-read))
-            (deferred:nextc it
-              (lambda (res)
-                (if (request-response-error-thrown res)
-                    (progn (message "Could not get index") t)
-                  (mapc (lambda (e)
-                          (unless (= (cdr (assq 'deleted e)) 1)
-                            (push (cons (cdr (assq 'key e))
-                                        (cdr (assq 'syncnum e))) index)))
-                        (cdr (assq 'data (request-response-data res))))
-                  (if (assq 'mark (request-response-data res))
-                      (simplenote2--get-index-deferred
-                       index
-                       (cdr (assq 'mark (request-response-data res))))
-                    index))))))))))
+      (lambda (token)
+        (deferred:$
+          (let ((params (list '("length" . "100")
+                              (cons "auth" token)
+                              (cons "email" simplenote2-email))))
+            (when mark (push (cons "mark" mark) params))
+            (request-deferred
+             (concat simplenote2--server-url "api2/index")
+             :type "GET"
+             :params params
+             :parser 'json-read))
+          (deferred:nextc it
+            (lambda (res)
+              (if (request-response-error-thrown res)
+                  (progn (message "Could not get index") t)
+                (mapc (lambda (e)
+                        (unless (= (cdr (assq 'deleted e)) 1)
+                          (push (cons (cdr (assq 'key e))
+                                      (cdr (assq 'syncnum e))) index)))
+                      (cdr (assq 'data (request-response-data res))))
+                (if (assq 'mark (request-response-data res))
+                    (simplenote2--get-index-deferred
+                     index
+                     (cdr (assq 'mark (request-response-data res))))
+                  index)))))))))
 
 (defun simplenote2--get-note-deferred (key)
   (lexical-let ((key key))
-    (deferred:$
+    (deferred:nextc
       (simplenote2--get-token-deferred)
-      (deferred:nextc it
-        (lambda (token)
-          (deferred:$
-            (request-deferred
-             (concat simplenote2--server-url "api2/data/" key)
-             :type "GET"
-             :params (list (cons "auth" token)
-                           (cons "email" simplenote2-email))
-             :parser 'json-read)
-            (deferred:nextc it
-              (lambda (res)
-                (if (request-response-error-thrown res)
-                    (message "Could not retreive note %s" key)
-                  (simplenote2--save-note (request-response-data res)))))))))))
+      (lambda (token)
+        (deferred:$
+          (request-deferred
+           (concat simplenote2--server-url "api2/data/" key)
+           :type "GET"
+           :params (list (cons "auth" token)
+                         (cons "email" simplenote2-email))
+           :parser 'json-read)
+          (deferred:nextc it
+            (lambda (res)
+              (if (request-response-error-thrown res)
+                  (message "Could not retreive note %s" key)
+                (simplenote2--save-note (request-response-data res))))))))))
 
 (defun simplenote2--mark-note-as-deleted-deferred (key)
   (lexical-let ((key key))
-    (deferred:$
+    (deferred:nextc
       (simplenote2--get-token-deferred)
-      (deferred:nextc it
-        (lambda (token)
-          (deferred:$
+      (lambda (token)
+        (deferred:$
+          (request-deferred
+           (concat simplenote2--server-url "api2/data/" key)
+           :type "POST"
+           :params (list (cons "auth" token)
+                         (cons "email" simplenote2-email))
+           :data (json-encode (list (cons "deleted" 1)))
+           :parser 'json-read)
+          (deferred:nextc it
+            (lambda (res)
+              (if (request-response-error-thrown res)
+                  (progn (message "Could not delete note %s" key) nil)
+                (request-response-data res)))))))))
+
+(defun simplenote2--update-note-deferred (key)
+  (lexical-let ((key key)
+                (note-info (gethash key simplenote2-notes-info)))
+    (deferred:nextc
+      (simplenote2--get-token-deferred)
+      (lambda (token)
+        (deferred:$
+          (let ((post-data
+                 (list (cons "content" (simplenote2--get-file-string
+                                        (simplenote2--filename-for-note key)))
+                       (cons "version" (number-to-string
+                                        (if note-info (nth 1 note-info) 0)))
+                       (cons "modifydate"
+                             (format "%.6f"
+                                     (float-time
+                                      (simplenote2--file-mtime
+                                       (simplenote2--filename-for-note key))))))))
+            ;; When locally modified flag is set, update tags and systemtags
+            (when (nth 7 note-info)
+              (let ((system-tags []))
+                (when (nth 5 note-info)
+                  (setf system-tags (vconcat system-tags ["markdown"])))
+                (when (nth 6 note-info)
+                  (setf system-tags (vconcat system-tags ["pinned"])))
+                (push (cons "systemtags" system-tags) post-data))
+              (push (cons "tags" (nth 4 note-info)) post-data))
             (request-deferred
              (concat simplenote2--server-url "api2/data/" key)
              :type "POST"
              :params (list (cons "auth" token)
                            (cons "email" simplenote2-email))
-             :data (json-encode (list (cons "deleted" 1)))
-             :parser 'json-read)
-            (deferred:nextc it
-              (lambda (res)
-                (if (request-response-error-thrown res)
-                    (progn (message "Could not delete note %s" key) nil)
-                  (request-response-data res))))))))))
-
-(defun simplenote2--update-note-deferred (key)
-  (lexical-let ((key key)
-                (note-info (gethash key simplenote2-notes-info)))
-    (deferred:$
-      (simplenote2--get-token-deferred)
-      (deferred:nextc it
-        (lambda (token)
-          (deferred:$
-            (let ((post-data
-                   (list (cons "content" (simplenote2--get-file-string
-                                          (simplenote2--filename-for-note key)))
-                         (cons "version" (number-to-string
-                                          (if note-info (nth 1 note-info) 0)))
-                         (cons "modifydate"
-                               (format "%.6f"
-                                       (float-time
-                                        (simplenote2--file-mtime
-                                         (simplenote2--filename-for-note key))))))))
-              ;; When locally modified flag is set, update tags and systemtags
-              (when (nth 7 note-info)
-                (let ((system-tags []))
-                  (when (nth 5 note-info)
-                    (setf system-tags (vconcat system-tags ["markdown"])))
-                  (when (nth 6 note-info)
-                    (setf system-tags (vconcat system-tags ["pinned"])))
-                  (push (cons "systemtags" system-tags) post-data))
-                (push (cons "tags" (nth 4 note-info)) post-data))
-              (request-deferred
-               (concat simplenote2--server-url "api2/data/" key)
-               :type "POST"
-               :params (list (cons "auth" token)
-                             (cons "email" simplenote2-email))
-               :data (json-encode post-data)
-               :headers '(("Content-Type" . "application/json"))
-               :parser 'json-read))
-            (deferred:nextc it
-              (lambda (res)
-                (if (request-response-error-thrown res)
-                    (progn (message "Could not update note %s" key) nil)
-                  (simplenote2--save-note (request-response-data res)))))))))))
+             :data (json-encode post-data)
+             :headers '(("Content-Type" . "application/json"))
+             :parser 'json-read))
+          (deferred:nextc it
+            (lambda (res)
+              (if (request-response-error-thrown res)
+                  (progn (message "Could not update note %s" key) nil)
+                (simplenote2--save-note (request-response-data res))))))))))
 
 (defun simplenote2--create-note-deferred (file)
   (lexical-let ((file file)
                 (content (simplenote2--get-file-string file))
                 (createdate (format "%.6f" (float-time
                                             (simplenote2--file-mtime file)))))
-    (deferred:$
+    (deferred:nextc
       (simplenote2--get-token-deferred)
-      (deferred:nextc it
-        (lambda (token)
-          (deferred:$
-            (request-deferred
-             (concat simplenote2--server-url "api2/data")
-             :type "POST"
-             :params (list (cons "auth" token)
-                           (cons "email" simplenote2-email))
-             :data (json-encode
-                    (list (cons "content" content)
-                          (cons "createdate" createdate)
-                          (cons "modifydate" createdate)))
-             :headers '(("Content-Type" . "application/json"))
-             :parser 'json-read)
-            (deferred:nextc it
-              (lambda (res)
-                (if (request-response-error-thrown res)
-                    (progn (message "Could not create note") nil)
-                  (let ((note (request-response-data res)))
-                    (push (cons 'content content) note)
-                    (simplenote2--save-note note)))))))))))
+      (lambda (token)
+        (deferred:$
+          (request-deferred
+           (concat simplenote2--server-url "api2/data")
+           :type "POST"
+           :params (list (cons "auth" token)
+                         (cons "email" simplenote2-email))
+           :data (json-encode
+                  (list (cons "content" content)
+                        (cons "createdate" createdate)
+                        (cons "modifydate" createdate)))
+           :headers '(("Content-Type" . "application/json"))
+           :parser 'json-read)
+          (deferred:nextc it
+            (lambda (res)
+              (if (request-response-error-thrown res)
+                  (progn (message "Could not create note") nil)
+                (let ((note (request-response-data res)))
+                  (push (cons 'content content) note)
+                  (simplenote2--save-note note))))))))))
 
 
 ;;; Push and pull buffer as note
