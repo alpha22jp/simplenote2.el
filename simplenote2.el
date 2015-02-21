@@ -466,7 +466,7 @@ This function works depending on where the current buffer file is located.
                             (simplenote2-browser-refresh))
                     (message "Failed to push note %s" key)))))
           (message "No need to push this note"))))
-     (t (message "Can't push buffer which isn't simplenote note")))))
+     (t (message "This buffer is not a Simplenote note")))))
 
 ;;;###autoload
 (defun simplenote2-create-note-from-buffer ()
@@ -524,7 +524,7 @@ Otherwise, the local modification is discarded."
                   (when (eq buf (current-buffer))
                     (revert-buffer nil t t))
                   (simplenote2-browser-refresh))))))
-      (message "Can't pull buffer which isn't simplenote note"))))
+      (message "This buffer is not a Simplenote note"))))
 
 
 ;;; Browser helper functions
@@ -617,6 +617,7 @@ are retrieved from the server forcefully."
   (when simplenote2--sync-process-running
       (error "Simplenote sync process is still running"))
   (setq simplenote2--sync-process-running t)
+  (message "Start syncing...")
   (lexical-let ((arg arg))
     (deferred:$
       ;; Step1: Sync update on local
@@ -667,6 +668,7 @@ are retrieved from the server forcefully."
       ;; Step2: Sync update on server
       (deferred:nextc it
         (lambda ()
+          (message "Syncing update on local done")
           ;; Step2-1: Get index from server and update local files.
           (deferred:nextc
             (simplenote2--get-index-deferred)
@@ -677,6 +679,7 @@ are retrieved from the server forcefully."
                     (setq simplenote2--sync-process-running nil)
                     (message "Failed to get index, abort sync"))
                 ;; Step2-2: Delete notes on local which are not included in the index.
+                (message "Getting index from server done")
                 (let ((keys-in-index (mapcar (lambda (e) (car e)) index)))
                   (dolist (file (directory-files
                                  (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
@@ -705,10 +708,10 @@ are retrieved from the server forcefully."
                       (mapcar (lambda (key) (simplenote2--get-note-deferred key))
                               keys-to-update))
                     (lambda (notes)
-                      (message "Syncing all notes done")
                       (simplenote2--make-tag-list)
                       (simplenote2-save-notes-info)
                       (setq simplenote2--sync-process-running nil)
+                      (message "Syncing all notes done")
                       ;; Refresh the browser
                       (save-excursion
                         (simplenote2-browser-refresh))))))))))
@@ -835,13 +838,14 @@ ARG is specified, this function resets the filter already set."
          (note-info (gethash key simplenote2-notes-info))
          tag)
     (if (not note-info)
-        (message "Can't add tag which isn't simplenote note")
+        (message "This buffer is not a Simplenote note")
       (setq tag (completing-read "Input tag: " simplenote2-tag-list))
       (unless (or (string= tag "")
                   (simplenote2--tag-existp tag (nth 4 note-info)))
         (push tag (nth 4 note-info))
         (setf (nth 7 note-info) t)
-        (simplenote2-browser-refresh)))))
+        (simplenote2-browser-refresh)
+        (message "Added tag: %s" tag)))))
 
 (defun simplenote2-delete-tag ()
   "Delete a tag from the note currently visiting"
@@ -851,11 +855,12 @@ ARG is specified, this function resets the filter already set."
          (note-info (gethash key simplenote2-notes-info))
          tag)
     (if (not note-info)
-        (message "Can't add tag which isn't simplenote note")
+        (message "This buffer is not a Simplenote note")
       (setq tag (completing-read "Input tag: " (nth 4 note-info) nil t))
       (setf (nth 4 note-info) (remove tag (nth 4 note-info)))
       (setf (nth 7 note-info) t)
-      (simplenote2-browser-refresh))))
+      (simplenote2-browser-refresh)
+      (message "Deleted tag: %s" tag))))
 
 (defun simplenote2-set-markdown (&optional arg)
   "Set/reset markdown flag to the note currently visiting"
@@ -864,7 +869,7 @@ ARG is specified, this function resets the filter already set."
          (key (file-name-nondirectory file))
          (note-info (gethash key simplenote2-notes-info)))
     (if (not note-info)
-        (message "Can't set markdown which isn't simplenote note")
+        (message "This buffer is not a Simplenote note")
       (unless (eq (not arg) (nth 5 note-info))
         (setf (nth 5 note-info) (if arg nil t))
         (setf (nth 7 note-info) t)
@@ -878,7 +883,7 @@ ARG is specified, this function resets the filter already set."
          (key (file-name-nondirectory file))
          (note-info (gethash key simplenote2-notes-info)))
     (if (not note-info)
-        (message "Can't set pinned which isn't simplenote note")
+        (message "This buffer is not a Simplenote note")
       (unless (eq (not arg) (nth 6 note-info))
         (setf (nth 6 note-info) (if arg nil t))
         (setf (nth 7 note-info) t)
