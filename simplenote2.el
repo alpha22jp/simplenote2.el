@@ -131,7 +131,7 @@ to edit them, set this option to `markdown-mode'."
     (buffer-string)))
 
 (defun simplenote2--tag-existp (tag tag-list)
-  "Returns t if there is a string named TAG in TAG-LIST, otherwise nil"
+  "Return non-nil if there is a string named TAG in TAG-LIST"
   (if (arrayp tag-list)
       (loop for i from 0 below (length tag-list)
             thereis (string= tag (aref tag-list i))))
@@ -242,11 +242,11 @@ to edit them, set this option to `markdown-mode'."
   simplenote2-password)
 
 (defun simplenote2--get-token-deferred ()
-  "Returns simplenote token wrapped with deferred object.
+  "Return simplenote token wrapped with deferred object
 
-This function returns cached token if it's cached to 'simplenote2--token,\
- otherwise gets token from server using 'simplenote2-email and 'simplenote2-password\
- and cache it."
+This function returns cached token if it has been already gotten,
+otherwise gets token from server using `simplenote2-email' and
+`simplenote2-password' and cache it for future use."
   (if simplenote2--token
       (deferred:next (lambda () simplenote2--token))
     (deferred:$
@@ -275,7 +275,15 @@ This function returns cached token if it's cached to 'simplenote2--token,\
 ;;; API calls for index and notes
 
 (defun simplenote2--get-index-deferred (&optional index mark)
-  "Get note index from server and returns the list of note index."
+  "Get note index from server and return it wrapped with deferred
+
+Index returned is a list whose element consists of (KEY . SYNCNUM), where
+KEY is a string for note key and SYNCNUM is a number which means the times
+of syncing note. Notes marked as deleted are not included in the list.
+
+This function is intended to be called recursively. When MARK is non-nil,
+it's added to the parameter for requesting index, and index gotten from
+server is concatenated to the index provided by INDEX."
   (lexical-let ((index index)
                 (mark mark))
     (deferred:nextc
@@ -307,6 +315,7 @@ This function returns cached token if it's cached to 'simplenote2--token,\
                   index)))))))))
 
 (defun simplenote2--get-note-deferred (key)
+  "Get note information for KEY including content from server"
   (lexical-let ((key key))
     (deferred:nextc
       (simplenote2--get-token-deferred)
@@ -325,6 +334,7 @@ This function returns cached token if it's cached to 'simplenote2--token,\
                 (simplenote2--save-note (request-response-data res))))))))))
 
 (defun simplenote2--mark-note-as-deleted-deferred (key)
+  "Request server to mark note for KEY as deleted"
   (lexical-let ((key key))
     (deferred:nextc
       (simplenote2--get-token-deferred)
@@ -344,6 +354,7 @@ This function returns cached token if it's cached to 'simplenote2--token,\
                 (request-response-data res)))))))))
 
 (defun simplenote2--update-note-deferred (key)
+  "Request server to update note for KEY with local data"
   (lexical-let ((key key)
                 (file (simplenote2--filename-for-note key))
                 (note-info (gethash key simplenote2-notes-info)))
@@ -386,6 +397,7 @@ This function returns cached token if it's cached to 'simplenote2--token,\
                 (simplenote2--save-note (request-response-data res))))))))))
 
 (defun simplenote2--create-note-deferred (file)
+  "Request server to create a note whose content is FILE"
   (lexical-let ((file file)
                 (content (simplenote2--get-file-string file))
                 (createdate (simplenote2--time-to-seconds
@@ -417,6 +429,14 @@ This function returns cached token if it's cached to 'simplenote2--token,\
 ;;; Push and pull buffer as note
 
 (defun simplenote2-push-buffer ()
+  "Push changes to server which are added to the note currently visiting
+
+This function works depending on where the current buffer file is located. 
+1) If the file is on new note directory, it does just the same process as
+   `simplenote2-create-note-from-buffer'.
+2) If the file is on notes directory, it requests server to merge changes
+   locally added to the note.
+3) Otherwise, show error message and do nothing."
   (interactive)
   (lexical-let ((file (buffer-file-name))
                 (buf (current-buffer)))
@@ -450,6 +470,12 @@ This function returns cached token if it's cached to 'simplenote2--token,\
 
 ;;;###autoload
 (defun simplenote2-create-note-from-buffer ()
+  "Create a new note from the buffer currently visiting
+
+This function requests server to create a new note. The buffer currently
+visiting is used as the content of the note. When the note is created
+successfully, the current buffer file is moved to `simplenote2-directory'
+and can be handled from the browser screen."
   (interactive)
   (lexical-let ((file (buffer-file-name))
                 (buf (current-buffer)))
@@ -470,6 +496,13 @@ This function returns cached token if it's cached to 'simplenote2--token,\
               (simplenote2-browser-refresh))))))))
 
 (defun simplenote2-pull-buffer ()
+  "Pull the latest status of note currently visiting from the server
+
+This function retrieves the latest status of note including content from the
+server, and overwrite local data with them. In the case the note is modified
+locally, you'll be asked if you push the modification to the server first.
+If you answer yes, this function does the same as `simplenote2-push-buffer'.
+Otherwise, the local modification is discarded."
   (interactive)
   (lexical-let ((file (buffer-file-name))
                 (buf (current-buffer)))
@@ -563,6 +596,23 @@ setting."
 ;; Simplenote sync
 
 (defun simplenote2-sync-notes (&optional arg)
+  "Sync all notes between the server and the local data
+
+This function syncs all notes between the server and the local data. The steps
+of the process are as below.
+
+1) Sync update made on local side.
+  1. Delete notes locally marked as deleted.
+  2. Push notes locally created.
+  3. Push modifications locally added.
+2) Sync update made on server side.
+  1. Get the index of notes from the server, then
+    a) Delete notes which aren't included in the index.
+    b) Update/Create notes which are older then that on server.
+
+If the prefix ARG is specified, this function doesn't check if the local data
+is older than that on server in the step 2)-1-b) above, which means all notes
+are retrieved from the server forcefully."
   (interactive "P")
   (when simplenote2--sync-process-running
       (error "Simplenote sync process is still running"))
@@ -707,6 +757,7 @@ setting."
 
 ;;;###autoload
 (defun simplenote2-browse ()
+  "Show Simplenote browser screen"
   (interactive)
   (when (not (file-exists-p simplenote2-directory))
       (make-directory simplenote2-directory t))
@@ -715,6 +766,7 @@ setting."
   (goto-char 1))
 
 (defun simplenote2-browser-refresh ()
+  "Refresh Simplenote browser screen"
   (interactive)
   (when (get-buffer "*Simplenote*")
     (set-buffer "*Simplenote*")
@@ -775,6 +827,11 @@ setting."
   (widget-setup))
 
 (defun simplenote2-filter-note-by-tag (&optional arg)
+  "Filter the notes displayed on the browser by tags
+
+This function sets the filter used for the browser screen interactively.
+You can specify one or more tags until you input just [enter]. If the prefix
+ARG is specified, this function resets the filter already set."
   (interactive "P")
   (setq simplenote2-filter-note-tag-list nil)
   (when (not arg)
@@ -786,6 +843,7 @@ setting."
   (simplenote2-browser-refresh))
 
 (defun simplenote2-add-tag ()
+  "Add a tag to the note currently visiting"
   (interactive)
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
@@ -801,6 +859,7 @@ setting."
         (simplenote2-browser-refresh)))))
 
 (defun simplenote2-delete-tag ()
+  "Delete a tag from the note currently visiting"
   (interactive)
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
@@ -814,6 +873,7 @@ setting."
       (simplenote2-browser-refresh))))
 
 (defun simplenote2-set-markdown (&optional arg)
+  "Set/reset markdown flag to the note currently visiting"
   (interactive "P")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
@@ -827,6 +887,7 @@ setting."
         (message "%s markdown flag" (if arg "Unset" "Set"))))))
 
 (defun simplenote2-set-pinnped (&optional arg)
+  "Set/reset pinned flag to the note currently visiting"
   (interactive "P")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
