@@ -366,7 +366,11 @@ This function returns cached token if it's cached to 'simplenote2--token,\
                 (when (nth 6 note-info)
                   (setf system-tags (vconcat system-tags ["pinned"])))
                 (push (cons "systemtags" system-tags) post-data))
-              (push (cons "tags" (nth 4 note-info)) post-data))
+              ;; json-encode can handle list as the same as array, but only
+              ;; "empty" tags should be described as [] because empty list
+              ;; (which is the same as nil) is converted to "null".
+              (push (cons "tags" (if (nth 4 note-info) (nth 4 note-info) []))
+                    post-data))
             (request-deferred
              (concat simplenote2--server-url "api2/data/" key)
              :type "POST"
@@ -805,7 +809,7 @@ setting."
     (if (not note-info)
         (message "Can't add tag which isn't simplenote note")
       (setq tag (completing-read "Input tag: " (nth 4 note-info) nil t))
-      (delete tag (nth 4 note-info))
+      (setf (nth 4 note-info) (remove tag (nth 4 note-info)))
       (setf (nth 7 note-info) t)
       (simplenote2-browser-refresh))))
 
