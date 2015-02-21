@@ -19,9 +19,7 @@ This package requires Emacs 23 or later. Tested on Emacs 23.3 and Emacs 24.3 on 
 
 ### Manually
 
-This package depends on [request-deferred](https://github.com/tkf/emacs-request). Install it in advance.
-
-Then, just download `simplenote2.el` and put it on a directory anywhere Emacs can find.
+This package depends on [request-deferred](https://github.com/tkf/emacs-request). Install it in advance. Then, just download `simplenote2.el` and put it on a directory anywhere Emacs can find.
 
 ## Configuration
 
@@ -87,7 +85,7 @@ This command just pulls the modifications on the server added to the note curren
 
 ### Tags support
 
-Tags attached to each note are displayed on the notes list of the browser. You can filter the notes list with specified tags by `M-x simplenote2-filter-notes-by-tag`. This command interactively asks you the name of tags. You can input multiple tag names until you just input [Enter]. After this command, the only notes which have the either of tags you specified will be displayed. `C-u M-x simplenote2-filter-notes-by-tag` unsets the filter.
+Tags attached to each note are displayed on the notes list of the browser. You can filter the notes list with specified tags by `M-x simplenote2-filter-notes-by-tag`. This command interactively asks you the name of tags. You can input multiple tag names until you just input [Enter]. Tag name completion by [Tab] is available. After inputing tags, the only notes which have the either of tags you specified will be displayed. `C-u M-x simplenote2-filter-notes-by-tag` unsets the filter.
 
 You can also specify the default filter by setting the variable `simplenote2-filter-note-tag-list` in your `.emacs` like below.
 
@@ -95,12 +93,29 @@ You can also specify the default filter by setting the variable `simplenote2-fil
 (setq simplenote2-filter-note-tag-list '("tag1" "tag2" "tag3"))
 ```
 
-*Attaching tags on simplenote2 will be supported soon.*
+You can add a tag by `M-x simplenote2-add-tag` and delete a tag by `M-x simplenote2-delete-tag` to the note currently visiting. Tag name completion is available in these commands too.
 
 ### Pinned to top
 
 The notes which have the attribute "Pinned to top" are displayed on the top of the notes list by default.
 
+You can set this attribute by `M-x simplenote2-set-pinned` to the note currently visiting. `C-u M-x simplenote2-set-pinned` unset the attribute.
+
 ### Markdown formatted
 
-*Will be coming soon...*
+When you edit the notes which have the attribute "Markdown formatted", the file is opened with the major mode specified by the customize variable `simplenote2-markdown-notes-mode` whose default value is `text-mode`. If you want to use `markdown-mode` for example, install `markdown-mode.el` and set this variable to `markdown-mode`.
+
+You can set this attribute by `M-x simplenote2-set-markdown` to the note currently visiting. `C-u M-x simplenote2-set-markdown` unset the attribute.
+
+## History
+
+version 2.1.0 (2015-02-22)
+
+* Add: support editing tags and other attributes (pinned, markdown).
+* Add: customize variable `simplenote2-markdown-notes-mode`.
+* Modify: improve some browser screen appearance and UI.
+* Fix: fix some minor bugs.
+
+version 2.0.0 (2015-02-16)
+
+* Initial release as simplenote2.el
