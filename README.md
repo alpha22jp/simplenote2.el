@@ -1,5 +1,7 @@
 # simplenote2.el
 
+(Here is [Japanese version](./README_ja.md))
+
 simplenote2.el is a new version of [simplenote.el](https://github.com/dotemacs/simplenote.el) which assists
 the interaction with [Simplenote](http://simplenoteapp.com/).
 The major improvement points from the original version are
