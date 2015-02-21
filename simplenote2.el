@@ -135,7 +135,7 @@ to edit them, set this option to `markdown-mode'."
   (if (arrayp tag-list)
       (loop for i from 0 below (length tag-list)
             thereis (string= tag (aref tag-list i)))
-    (member tag tag-list) t nil))
+    (member tag tag-list)))
 
 (defun simplenote2--make-tag-list ()
   (let ((files
