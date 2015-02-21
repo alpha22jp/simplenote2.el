@@ -261,7 +261,7 @@ This function returns cached token if it's cached to 'simplenote2--token,\
                 (if simplenote2--email-was-read-interactively
                     (setq simplenote2-email nil))
                 (if simplenote2--password-was-read-interactively
-                    (setq simplenote2--password nil))
+                    (setq simplenote2-password nil))
                 (setq simplenote2--token nil)
                 (error "Simplenote authentication failed"))
             (message "Simplenote authentication succeeded")
