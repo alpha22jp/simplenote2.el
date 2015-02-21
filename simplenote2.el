@@ -134,8 +134,8 @@ to edit them, set this option to `markdown-mode'."
   "Return non-nil if there is a string named TAG in TAG-LIST"
   (if (arrayp tag-list)
       (loop for i from 0 below (length tag-list)
-            thereis (string= tag (aref tag-list i))))
-  (if (member tag tag-list) t nil))
+            thereis (string= tag (aref tag-list i)))
+    (member tag tag-list) t nil))
 
 (defun simplenote2--make-tag-list ()
   (let ((files
