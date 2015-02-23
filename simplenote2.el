@@ -457,18 +457,17 @@ This function works depending on where the current buffer file is located.
                  (or (time-less-p (seconds-to-time (nth 3 note-info))
                                   (simplenote2--file-mtime file))
                      (nth 7 note-info)))
-            (deferred:$
+            (deferred:nextc
               (simplenote2--update-note-deferred key)
-              (deferred:nextc it
-                (lambda (ret)
-                  (if ret (progn
-                            (message "Pushed note %s" key)
-                            (when (eq buf (current-buffer))
-                                  (revert-buffer nil t t))
-                            (simplenote2-browser-refresh))
-                    (message "Failed to push note %s" key)))))
+              (lambda (ret)
+                (if ret (progn
+                          (message "Pushed note %s" key)
+                          (when (eq buf (current-buffer))
+                            (revert-buffer nil t t))
+                          (simplenote2-browser-refresh))
+                  (message "Failed to push note %s" key))))
           (message "No need to push this note"))))
-     (t (message "This buffer is not a Simplenote note")))))
+    (t (message "This buffer is not a Simplenote note")))))
 
 ;;;###autoload
 (defun simplenote2-create-note-from-buffer ()
@@ -485,17 +484,16 @@ and can be handled from the browser screen."
             (not file))
         (message "Can't create note from this buffer")
       (save-buffer)
-      (deferred:$
+      (deferred:nextc
         (simplenote2--create-note-deferred file)
-        (deferred:nextc it
-          (lambda (key)
-            (if (not key)
-                (message "Failed to create note")
-              (message "Created note %s" key)
-              (simplenote2--open-note (simplenote2--filename-for-note key))
-              (delete-file file)
-              (kill-buffer buf)
-              (simplenote2-browser-refresh))))))))
+        (lambda (key)
+          (if (not key)
+              (message "Failed to create note")
+            (message "Created note %s" key)
+            (simplenote2--open-note (simplenote2--filename-for-note key))
+            (delete-file file)
+            (kill-buffer buf)
+            (simplenote2-browser-refresh)))))))
 
 (defun simplenote2-pull-buffer ()
   "Pull the latest status of note currently visiting from the server
@@ -519,13 +517,12 @@ Otherwise, the local modification is discarded."
                     "This note appears to have been modified. Do you push it on ahead?"))
               (simplenote2-push-buffer)
             (save-buffer)
-            (deferred:$
+            (deferred:nextc
               (simplenote2--get-note-deferred key)
-              (deferred:nextc it
-                (lambda (ret)
-                  (when (eq buf (current-buffer))
-                    (revert-buffer nil t t))
-                  (simplenote2-browser-refresh))))))
+              (lambda (ret)
+                (when (eq buf (current-buffer))
+                  (revert-buffer nil t t))
+                (simplenote2-browser-refresh)))))
       (message "This buffer is not a Simplenote note"))))
 
 
