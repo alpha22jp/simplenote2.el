@@ -365,7 +365,8 @@ server is concatenated to the index provided by INDEX."
       (lambda (token)
         (deferred:$
           (let ((post-data
-                 (list (cons "content" (simplenote2--get-file-string file))
+                 (list (cons "content" (url-hexify-string
+                                        (simplenote2--get-file-string file)))
                        (cons "version" (number-to-string
                                         (if note-info (nth 1 note-info) 0)))
                        (cons "modifydate"
@@ -414,7 +415,7 @@ server is concatenated to the index provided by INDEX."
            :params (list (cons "auth" token)
                          (cons "email" simplenote2-email))
            :data (json-encode
-                  (list (cons "content" content)
+                  (list (cons "content" (url-hexify-string content))
                         (cons "createdate" createdate)
                         (cons "modifydate" createdate)))
            :headers '(("Content-Type" . "application/json"))
