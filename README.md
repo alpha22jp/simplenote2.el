@@ -111,6 +111,10 @@ You can set this attribute by `M-x simplenote2-set-markdown` to the note current
 
 ## History
 
+version 2.1.1 (2015-02-25)
+
+* Fix: some charactors can't be synced due to lack of URI encode.
+
 version 2.1.0 (2015-02-22)
 
 * Add: support editing tags and other attributes (pinned, markdown).
