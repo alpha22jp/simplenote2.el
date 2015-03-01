@@ -404,6 +404,8 @@ server is concatenated to the index provided by INDEX."
 (defun simplenote2--create-note-deferred (file)
   "Request server to create a note whose content is FILE"
   (lexical-let ((file file)
+                (note-info (gethash (file-name-nondirectory file)
+                                    simplenote2-new-notes-info))
                 (content (simplenote2--get-file-string file))
                 (createdate (simplenote2--time-to-seconds
                              (simplenote2--file-mtime file))))
@@ -411,17 +413,31 @@ server is concatenated to the index provided by INDEX."
       (simplenote2--get-token-deferred)
       (lambda (token)
         (deferred:$
-          (request-deferred
-           (concat simplenote2--server-url "api2/data")
-           :type "POST"
-           :params (list (cons "auth" token)
-                         (cons "email" simplenote2-email))
-           :data (json-encode
-                  (list (cons "content" (url-hexify-string content))
-                        (cons "createdate" createdate)
-                        (cons "modifydate" createdate)))
-           :headers '(("Content-Type" . "application/json"))
-           :parser 'json-read)
+          (let ((post-data
+                 (list (cons "content" (url-hexify-string content))
+                       (cons "createdate" createdate)
+                       (cons "modifydate" createdate))))
+            ;; When locally modified flag is set, update tags and systemtags
+            (when (nth 7 note-info)
+              (let ((system-tags []))
+                (when (nth 5 note-info)
+                  (setf system-tags (vconcat system-tags ["markdown"])))
+                (when (nth 6 note-info)
+                  (setf system-tags (vconcat system-tags ["pinned"])))
+                (push (cons "systemtags" system-tags) post-data))
+              ;; json-encode can handle list as the same as array, but only
+              ;; "empty" tags should be described as [] because empty list
+              ;; (which is the same as nil) is converted to "null".
+              (push (cons "tags" (if (nth 4 note-info) (nth 4 note-info) []))
+                    post-data))
+            (request-deferred
+             (concat simplenote2--server-url "api2/data")
+             :type "POST"
+             :params (list (cons "auth" token)
+                           (cons "email" simplenote2-email))
+             :data (json-encode post-data)
+             :headers '(("Content-Type" . "application/json"))
+             :parser 'json-read))
           (deferred:nextc it
             (lambda (res)
               (if (request-response-error-thrown res)

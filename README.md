@@ -1,5 +1,7 @@
 # simplenote2.el
 
+[![MELPA](http://melpa.org/packages/simplenote2-badge.svg)](http://melpa.org/#/simplenote2)
+
 (Here is [Japanese version](./README_ja.md))
 
 simplenote2.el is a new version of [simplenote.el](https://github.com/dotemacs/simplenote.el) which assists
