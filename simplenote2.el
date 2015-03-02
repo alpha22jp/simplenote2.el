@@ -404,8 +404,11 @@ server is concatenated to the index provided by INDEX."
 (defun simplenote2--create-note-deferred (file)
   "Request server to create a note whose content is FILE"
   (lexical-let ((file file)
-                (note-info (gethash (file-name-nondirectory file)
-                                    simplenote2-new-notes-info))
+                (note-info
+                 (and (string-match (simplenote2--new-notes-dir)
+                                     (file-name-directory file))
+                       (gethash (file-name-nondirectory file)
+                                simplenote2-new-notes-info)))
                 (content (simplenote2--get-file-string file))
                 (createdate (simplenote2--time-to-seconds
                              (simplenote2--file-mtime file))))
@@ -417,7 +420,8 @@ server is concatenated to the index provided by INDEX."
                  (list (cons "content" (url-hexify-string content))
                        (cons "createdate" createdate)
                        (cons "modifydate" createdate))))
-            ;; When locally modified flag is set, update tags and systemtags
+            ;; When note info exists (which means the note is under simplenote
+            ;; dir), and locally modified flag is set, add tags and systemtags
             (when (nth 7 note-info)
               (let ((system-tags []))
                 (when (nth 5 note-info)
