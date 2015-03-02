@@ -425,11 +425,8 @@ server is concatenated to the index provided by INDEX."
                 (when (nth 6 note-info)
                   (setf system-tags (vconcat system-tags ["pinned"])))
                 (push (cons "systemtags" system-tags) post-data))
-              ;; json-encode can handle list as the same as array, but only
-              ;; "empty" tags should be described as [] because empty list
-              ;; (which is the same as nil) is converted to "null".
-              (push (cons "tags" (if (nth 4 note-info) (nth 4 note-info) []))
-                    post-data))
+              (when (nth 4 note-info)
+                (push (cons "tags" (nth 4 note-info)) post-data)))
             (request-deferred
              (concat simplenote2--server-url "api2/data")
              :type "POST"
