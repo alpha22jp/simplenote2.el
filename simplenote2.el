@@ -902,6 +902,9 @@ ARG is specified, this function resets the filter already set."
       (unless (eq (not arg) (nth 5 note-info))
         (setf (nth 5 note-info) (if arg nil t))
         (setf (nth 7 note-info) t)
+        (funcall (if (nth 5 note-info)
+                     simplenote2-markdown-notes-mode
+                   simplenote2-notes-mode))
         (simplenote2-browser-refresh)
         (message "%s markdown flag" (if arg "Unset" "Set"))))))
 
