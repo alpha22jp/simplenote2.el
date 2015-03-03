@@ -95,6 +95,11 @@ to edit them, set this option to `markdown-mode'."
 
 (defvar simplenote2-mode-hook nil)
 
+(defcustom simplenote2-create-note-hook nil
+  "List of functions to be called when a new file is created locally."
+  :type 'hook
+  :group 'simplenote2)
+
 (put 'simplenote2-mode 'mode-class 'special)
 
 (defvar simplenote2--server-url "https://simple-note.appspot.com/")
@@ -807,7 +812,8 @@ are retrieved from the server forcefully."
                            (let (buf)
                              (setq buf (simplenote2--create-note-locally))
                              (simplenote2-browser-refresh)
-                             (switch-to-buffer buf)))
+                             (switch-to-buffer buf)
+                             (run-hooks 'simplenote2-create-note-hook)))
                  "Create new note")
   (widget-insert "\n\n")
   ;; New notes list
