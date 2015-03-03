@@ -618,7 +618,7 @@ setting."
                    simplenote2-notes-mode))))
     ;; Refresh notes display after save
     (add-hook 'after-save-hook
-              (lambda () (save-excursion (simplenote2-browser-refresh)))
+              (lambda () (simplenote2-browser-refresh))
               nil t)))
 
 
@@ -744,8 +744,7 @@ are retrieved from the server forcefully."
                       (setq simplenote2--sync-process-running nil)
                       (message "Syncing all notes done")
                       ;; Refresh the browser
-                      (save-excursion
-                        (simplenote2-browser-refresh))))))))))
+                      (simplenote2-browser-refresh)))))))))
       (deferred:error it
         (lambda (err)
           (message "Sync notes error: %s" err)
@@ -787,9 +786,10 @@ are retrieved from the server forcefully."
 (defun simplenote2-browser-refresh ()
   "Refresh Simplenote browser screen"
   (interactive)
-  (when (get-buffer "*Simplenote*")
-    (set-buffer "*Simplenote*")
-    (simplenote2--menu-setup)))
+  (save-excursion
+    (when (get-buffer "*Simplenote*")
+      (set-buffer "*Simplenote*")
+      (simplenote2--menu-setup))))
 
 
 (defun simplenote2--menu-setup ()
@@ -862,9 +862,9 @@ ARG is specified, this function resets the filter already set."
         (setq tag (read-string "Input tag: ")))))
   (simplenote2-browser-refresh))
 
-(defun simplenote2-add-tag ()
+(defun simplenote2-add-tag (arg)
   "Add a tag to the note currently visiting"
-  (interactive)
+  (interactive "p")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
          (note-info (or (gethash key simplenote2-notes-info)
@@ -872,7 +872,9 @@ ARG is specified, this function resets the filter already set."
          tag)
     (if (not note-info)
         (message "This buffer is not a Simplenote note")
-      (setq tag (completing-read "Input tag: " simplenote2-tag-list))
+      (if (interactive-p)
+          (setq tag (completing-read "Input tag: " simplenote2-tag-list))
+        (setq tag (if (stringp arg) arg "")))
       (unless (or (string= tag "")
                   (simplenote2--tag-existp tag (nth 4 note-info)))
         (push tag (nth 4 note-info))
