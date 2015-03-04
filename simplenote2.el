@@ -872,7 +872,7 @@ ARG is specified, this function resets the filter already set."
          tag)
     (if (not note-info)
         (message "This buffer is not a Simplenote note")
-      (if (interactive-p)
+      (if (called-interactively-p 'interactive)
           (setq tag (completing-read "Input tag: " simplenote2-tag-list))
         (setq tag (if (stringp arg) arg "")))
       (unless (or (string= tag "")
