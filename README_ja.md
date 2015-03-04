@@ -84,12 +84,34 @@ Emacs 23以降が必要です。Linux上のEmacs 23.3、及びEmacs 24.3でテ�
 
 `M-x simplenote2-set-markdown`で、現在表示しているノートに"Markdown formatted"属性をセットできます。`C-u M-x simplenote2-set-markdown`で解除します。
 
+### 新規ノートへのタグ・属性の設定
+
+以下のように、カスタマイズ変数 `simplenote2-create-note-hook` を用いて、新規ノートを作成する際にデフォルトでタグや属性をセットすることができます。
+
+```.emacs
+(add-hook 'simplenote2-create-note-hook
+	  (lambda ()
+	    (simplenote2-set-markdown)
+	    (simplenote2-add-tag "tag1")))
+```
+
 ## 更新履歴
+
+version 2.2.0 (2015-03-04)
+
+* New: 新規ノートへの (サーバーに同期する前の) タグやその他の属性の設定をサポート
+* New: カスタマイズ変数 `simplenote2-create-note-hook` を追加
+* Modify: 新規ノートをサーバーと同期する際のバッファ制御を改善
+* Fix: `M-x simplenote2-set-markdown` 実行時、即座にメジャーモードが切り替わらなかった不具合を修正
+
+version 2.1.1 (2015-02-25)
+
+* Fix: URIエンコードを行っていなかったことにより、いくつかの文字が正しく同期できなかった問題を修正
 
 version 2.1.0 (2015-02-22)
 
-* Add: タグ、その他の属性の編集をサポート
-* Add: カスタマイズ変数`simplenote2-markdown-notes-mode`を追加
+* New: タグ、その他の属性の編集をサポート
+* New: カスタマイズ変数 `simplenote2-markdown-notes-mode` を追加
 * Modify: ブラウザ画面の表示とUIを少し改善
 * Fix: いくつかのマイナーバグの修正
 
