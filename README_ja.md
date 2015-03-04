@@ -1,4 +1,4 @@
-# simplenote2.el
+# simplenote2.el [![MELPA](http://melpa.org/packages/simplenote2-badge.svg)](http://melpa.org/#/simplenote2) [![MELPA Stable](http://stable.melpa.org/packages/simplenote2-badge.svg)](http://stable.melpa.org/#/simplenote2)
 
 simplenote2.elは、オンラインメモサービス[Simplenote](http://simplenoteapp.com/)のEmacsクライアントである[simplenote.el](https://github.com/dotemacs/simplenote.el)の新バージョンです。旧バージョンからの主な改良点は、以下になります。
 

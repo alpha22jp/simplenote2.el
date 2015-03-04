@@ -1,6 +1,4 @@
-# simplenote2.el
-
-[![MELPA](http://melpa.org/packages/simplenote2-badge.svg)](http://melpa.org/#/simplenote2)
+# simplenote2.el [![MELPA](http://melpa.org/packages/simplenote2-badge.svg)](http://melpa.org/#/simplenote2) [![MELPA Stable](http://stable.melpa.org/packages/simplenote2-badge.svg)](http://stable.melpa.org/#/simplenote2)
 
 (Here is [Japanese version](./README_ja.md))
 
