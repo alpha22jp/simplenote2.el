@@ -95,6 +95,11 @@ to edit them, set this option to `markdown-mode'."
 
 (defvar simplenote2-mode-hook nil)
 
+(defcustom simplenote2-create-note-hook nil
+  "List of functions to be called when a new file is created locally."
+  :type 'hook
+  :group 'simplenote2)
+
 (put 'simplenote2-mode 'mode-class 'special)
 
 (defvar simplenote2--server-url "https://simple-note.appspot.com/")
@@ -105,6 +110,7 @@ to edit them, set this option to `markdown-mode'."
 (defvar simplenote2--token nil)
 
 (defvar simplenote2-notes-info (make-hash-table :test 'equal))
+(defvar simplenote2-new-notes-info (make-hash-table :test 'equal))
 
 (defvar simplenote2-tag-list nil)
 
@@ -186,6 +192,7 @@ to edit them, set this option to `markdown-mode'."
         (erase-buffer)
         (insert (format simplenote2--save-file-header (current-time-string)))
         (simplenote2--dump-variable 'simplenote2-notes-info)
+        (simplenote2--dump-variable 'simplenote2-new-notes-info)
         (simplenote2--dump-variable 'simplenote2-tag-list)
         (simplenote2--dump-variable 'simplenote2-notes-info-version)
         (write-file simplenote2--filename-for-notes-info)
@@ -402,6 +409,11 @@ server is concatenated to the index provided by INDEX."
 (defun simplenote2--create-note-deferred (file)
   "Request server to create a note whose content is FILE"
   (lexical-let ((file file)
+                (note-info
+                 (and (string-match (simplenote2--new-notes-dir)
+                                     (file-name-directory file))
+                       (gethash (file-name-nondirectory file)
+                                simplenote2-new-notes-info)))
                 (content (simplenote2--get-file-string file))
                 (createdate (simplenote2--time-to-seconds
                              (simplenote2--file-mtime file))))
@@ -409,17 +421,29 @@ server is concatenated to the index provided by INDEX."
       (simplenote2--get-token-deferred)
       (lambda (token)
         (deferred:$
-          (request-deferred
-           (concat simplenote2--server-url "api2/data")
-           :type "POST"
-           :params (list (cons "auth" token)
-                         (cons "email" simplenote2-email))
-           :data (json-encode
-                  (list (cons "content" (url-hexify-string content))
-                        (cons "createdate" createdate)
-                        (cons "modifydate" createdate)))
-           :headers '(("Content-Type" . "application/json"))
-           :parser 'json-read)
+          (let ((post-data
+                 (list (cons "content" (url-hexify-string content))
+                       (cons "createdate" createdate)
+                       (cons "modifydate" createdate))))
+            ;; When note info exists (which means the note is under simplenote
+            ;; dir), and locally modified flag is set, add tags and systemtags
+            (when (nth 7 note-info)
+              (let ((system-tags []))
+                (when (nth 5 note-info)
+                  (setf system-tags (vconcat system-tags ["markdown"])))
+                (when (nth 6 note-info)
+                  (setf system-tags (vconcat system-tags ["pinned"])))
+                (push (cons "systemtags" system-tags) post-data))
+              (when (nth 4 note-info)
+                (push (cons "tags" (nth 4 note-info)) post-data)))
+            (request-deferred
+             (concat simplenote2--server-url "api2/data")
+             :type "POST"
+             :params (list (cons "auth" token)
+                           (cons "email" simplenote2-email))
+             :data (json-encode post-data)
+             :headers '(("Content-Type" . "application/json"))
+             :parser 'json-read))
           (deferred:nextc it
             (lambda (res)
               (if (request-response-error-thrown res)
@@ -491,9 +515,13 @@ and can be handled from the browser screen."
           (if (not key)
               (message "Failed to create note")
             (message "Created note %s" key)
-            (simplenote2--open-note (simplenote2--filename-for-note key))
-            (delete-file file)
-            (kill-buffer buf)
+            (when (string= (simplenote2--new-notes-dir) (file-name-directory file))
+              (remhash (file-name-nondirectory file) simplenote2-new-notes-info))
+            (let ((new-file (simplenote2--filename-for-note key)))
+              (rename-file file new-file t)
+              (rename-buffer new-file)
+              (set-visited-file-name new-file)
+              (set-buffer-modified-p nil))
             (simplenote2-browser-refresh)))))))
 
 (defun simplenote2-pull-buffer ()
@@ -583,13 +611,14 @@ setting."
     ;; Don't switch mode when set via file cookie
     (when (eq major-mode (default-value 'major-mode))
       (let* ((key (file-name-nondirectory file))
-             (note-info (gethash key simplenote2-notes-info)))
+             (note-info (or (gethash key simplenote2-notes-info)
+                            (gethash key simplenote2-new-notes-info))))
         (funcall (if (nth 5 note-info)
                      simplenote2-markdown-notes-mode
                    simplenote2-notes-mode))))
     ;; Refresh notes display after save
     (add-hook 'after-save-hook
-              (lambda () (save-excursion (simplenote2-browser-refresh)))
+              (lambda () (simplenote2-browser-refresh))
               nil t)))
 
 
@@ -645,6 +674,8 @@ are retrieved from the server forcefully."
                                        (message "Created on local: %s" key)
                                        (let ((buf (get-file-buffer file)))
                                          (when buf (kill-buffer buf)))
+                                       (remhash (file-name-nondirectory file)
+                                                simplenote2-new-notes-info)
                                        (delete-file file))))))
                  (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$"))
          ;; Step1-3: Push notes locally modified
@@ -713,8 +744,7 @@ are retrieved from the server forcefully."
                       (setq simplenote2--sync-process-running nil)
                       (message "Syncing all notes done")
                       ;; Refresh the browser
-                      (save-excursion
-                        (simplenote2-browser-refresh))))))))))
+                      (simplenote2-browser-refresh)))))))))
       (deferred:error it
         (lambda (err)
           (message "Sync notes error: %s" err)
@@ -756,9 +786,10 @@ are retrieved from the server forcefully."
 (defun simplenote2-browser-refresh ()
   "Refresh Simplenote browser screen"
   (interactive)
-  (when (get-buffer "*Simplenote*")
-    (set-buffer "*Simplenote*")
-    (simplenote2--menu-setup)))
+  (save-excursion
+    (when (get-buffer "*Simplenote*")
+      (set-buffer "*Simplenote*")
+      (simplenote2--menu-setup))))
 
 
 (defun simplenote2--menu-setup ()
@@ -781,7 +812,8 @@ are retrieved from the server forcefully."
                            (let (buf)
                              (setq buf (simplenote2--create-note-locally))
                              (simplenote2-browser-refresh)
-                             (switch-to-buffer buf)))
+                             (switch-to-buffer buf)
+                             (run-hooks 'simplenote2-create-note-hook)))
                  "Create new note")
   (widget-insert "\n\n")
   ;; New notes list
@@ -830,16 +862,19 @@ ARG is specified, this function resets the filter already set."
         (setq tag (read-string "Input tag: ")))))
   (simplenote2-browser-refresh))
 
-(defun simplenote2-add-tag ()
+(defun simplenote2-add-tag (arg)
   "Add a tag to the note currently visiting"
-  (interactive)
+  (interactive "p")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
-         (note-info (gethash key simplenote2-notes-info))
+         (note-info (or (gethash key simplenote2-notes-info)
+                        (gethash key simplenote2-new-notes-info)))
          tag)
     (if (not note-info)
         (message "This buffer is not a Simplenote note")
-      (setq tag (completing-read "Input tag: " simplenote2-tag-list))
+      (if (interactive-p)
+          (setq tag (completing-read "Input tag: " simplenote2-tag-list))
+        (setq tag (if (stringp arg) arg "")))
       (unless (or (string= tag "")
                   (simplenote2--tag-existp tag (nth 4 note-info)))
         (push tag (nth 4 note-info))
@@ -852,7 +887,8 @@ ARG is specified, this function resets the filter already set."
   (interactive)
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
-         (note-info (gethash key simplenote2-notes-info))
+         (note-info (or (gethash key simplenote2-notes-info)
+                        (gethash key simplenote2-new-notes-info)))
          tag)
     (if (not note-info)
         (message "This buffer is not a Simplenote note")
@@ -867,12 +903,16 @@ ARG is specified, this function resets the filter already set."
   (interactive "P")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
-         (note-info (gethash key simplenote2-notes-info)))
+         (note-info (or (gethash key simplenote2-notes-info)
+                        (gethash key simplenote2-new-notes-info))))
     (if (not note-info)
         (message "This buffer is not a Simplenote note")
       (unless (eq (not arg) (nth 5 note-info))
         (setf (nth 5 note-info) (if arg nil t))
         (setf (nth 7 note-info) t)
+        (funcall (if (nth 5 note-info)
+                     simplenote2-markdown-notes-mode
+                   simplenote2-notes-mode))
         (simplenote2-browser-refresh)
         (message "%s markdown flag" (if arg "Unset" "Set"))))))
 
@@ -881,7 +921,8 @@ ARG is specified, this function resets the filter already set."
   (interactive "P")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
-         (note-info (gethash key simplenote2-notes-info)))
+         (note-info (or (gethash key simplenote2-notes-info)
+                        (gethash key simplenote2-new-notes-info))))
     (if (not note-info)
         (message "This buffer is not a Simplenote note")
       (unless (eq (not arg) (nth 6 note-info))
@@ -904,7 +945,9 @@ ARG is specified, this function resets the filter already set."
   (let* ((modify (nth 5 (file-attributes file)))
          (modify-string (format-time-string "%Y-%m-%d %H:%M:%S" modify))
          (note (simplenote2--get-file-string file))
-         (headline (simplenote2--note-headline note))
+         (note-info (gethash (file-name-nondirectory file) simplenote2-new-notes-info))
+         (headline (concat (if (nth 6 note-info) "*" "")
+                           (simplenote2--note-headline note)))
          (shorttext (simplenote2--note-headrest note)))
     (widget-create 'link
                    :button-prefix ""
@@ -924,10 +967,15 @@ ARG is specified, this function resets the filter already set."
                    :notify (lambda (widget &rest ignore)
                              (let ((file (widget-get widget :tag)))
                                (delete-file file)
+                               (remhash (file-name-nondirectory file)
+                                        simplenote2-new-notes-info)
                                (let ((buf (get-file-buffer file)))
                                  (when buf (kill-buffer buf)))
                                (simplenote2-browser-refresh)))
                    "Remove")
+    (widget-insert "\t")
+    (dolist (tag (nth 4 note-info))
+      (widget-insert (format "[%s] " tag)))
     (widget-insert "\n\n")))
 
 (defun simplenote2--other-note-widget (pair)
@@ -1002,6 +1050,10 @@ ARG is specified, this function resets the filter already set."
       (setq counter (1+ counter))
       (setq new-filename (concat (simplenote2--new-notes-dir) (format "note-%d" counter))))
     (write-region "New note" nil new-filename nil)
+    ;; Save note information to 'simplenote2-new-notes-info
+    (puthash (file-name-nondirectory new-filename)
+             (list 0 0 (simplenote2--file-mtime new-filename) 0 nil nil nil nil)
+             simplenote2-new-notes-info)
     (simplenote2-browser-refresh)
     (simplenote2--open-note new-filename)))
 

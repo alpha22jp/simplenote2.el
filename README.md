@@ -1,5 +1,7 @@
 # simplenote2.el
 
+[![MELPA](http://melpa.org/packages/simplenote2-badge.svg)](http://melpa.org/#/simplenote2)
+
 (Here is [Japanese version](./README_ja.md))
 
 simplenote2.el is a new version of [simplenote.el](https://github.com/dotemacs/simplenote.el) which assists
@@ -109,7 +111,25 @@ When you edit the notes which have the attribute "Markdown formatted", the file 
 
 You can set this attribute by `M-x simplenote2-set-markdown` to the note currently visiting. `C-u M-x simplenote2-set-markdown` unset the attribute.
 
+### Add tags or attributes to new notes
+
+You can set tags or attributes to new notes by default using customize variable `simplenote2-create-note-hook` as below.
+
+```.emacs
+(add-hook 'simplenote2-create-note-hook
+	  (lambda ()
+	    (simplenote2-set-markdown)
+	    (simplenote2-add-tag "tag1")))
+```
+
 ## History
+
+version 2.2.0 (2015-03-04)
+
+* New: support adding tags and other attributes to new notes before they are synced to the server.
+* New: add customize variable `simplenote2-create-note-hook`.
+* Modify: improve buffer handling when new notes are synced to the server.
+* Fix: `M-x simplenote2-set-markdown` doesn't change the major mode immediately.
 
 version 2.1.1 (2015-02-25)
 
@@ -117,8 +137,8 @@ version 2.1.1 (2015-02-25)
 
 version 2.1.0 (2015-02-22)
 
-* Add: support editing tags and other attributes (pinned, markdown).
-* Add: customize variable `simplenote2-markdown-notes-mode`.
+* New: support editing tags and other attributes (pinned, markdown).
+* New: customize variable `simplenote2-markdown-notes-mode`.
 * Modify: improve some browser screen appearance and UI.
 * Fix: fix some minor bugs.
 
