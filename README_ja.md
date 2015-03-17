@@ -1,4 +1,4 @@
-# simplenote2.el
+# simplenote2.el [![MELPA](http://melpa.org/packages/simplenote2-badge.svg)](http://melpa.org/#/simplenote2) [![MELPA Stable](http://stable.melpa.org/packages/simplenote2-badge.svg)](http://stable.melpa.org/#/simplenote2)
 
 simplenote2.elは、オンラインメモサービス[Simplenote](http://simplenoteapp.com/)のEmacsクライアントである[simplenote.el](https://github.com/dotemacs/simplenote.el)の新バージョンです。旧バージョンからの主な改良点は、以下になります。
 
@@ -96,6 +96,10 @@ Emacs 23以降が必要です。Linux上のEmacs 23.3、及びEmacs 24.3でテ�
 ```
 
 ## 更新履歴
+
+version 2.2.1 (2015-03-17)
+
+* Fix: 空のノートをブラウザ画面で表示しようとしたときにエラーが発生するのを修正
 
 version 2.2.0 (2015-03-04)
 

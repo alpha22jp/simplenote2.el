@@ -1,6 +1,4 @@
-# simplenote2.el
-
-[![MELPA](http://melpa.org/packages/simplenote2-badge.svg)](http://melpa.org/#/simplenote2)
+# simplenote2.el [![MELPA](http://melpa.org/packages/simplenote2-badge.svg)](http://melpa.org/#/simplenote2) [![MELPA Stable](http://stable.melpa.org/packages/simplenote2-badge.svg)](http://stable.melpa.org/#/simplenote2)
 
 (Here is [Japanese version](./README_ja.md))
 
@@ -123,6 +121,10 @@ You can set tags or attributes to new notes by default using customize variable 
 ```
 
 ## History
+
+version 2.2.1 (2015-03-17)
+
+* Fix: Empty header line causes crash
 
 version 2.2.0 (2015-03-04)
 
