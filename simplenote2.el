@@ -948,7 +948,7 @@ ARG is specified, this function resets the filter already set."
          (note-info (gethash (file-name-nondirectory file) simplenote2-new-notes-info))
          (headline (concat (if (nth 6 note-info) "*" "")
                            (simplenote2--note-headline note)))
-         (shorttext (simplenote2--note-headrest note)))
+         (shorttext (or (simplenote2--note-headrest note) "[Empty]")))
     (widget-create 'link
                    :button-prefix ""
                    :button-suffix ""
@@ -988,7 +988,7 @@ ARG is specified, this function resets the filter already set."
          (note-info (gethash key simplenote2-notes-info))
          (headline (concat (if (nth 6 note-info) "*" "")
                            (simplenote2--note-headline note)))
-         (shorttext (simplenote2--note-headrest note)))
+         (shorttext (or (simplenote2--note-headrest note) "[Empty]")))
     (widget-create 'link
                    :button-prefix ""
                    :button-suffix ""
