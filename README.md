@@ -122,6 +122,10 @@ You can set tags or attributes to new notes by default using customize variable 
 
 ## History
 
+version 2.2.1 (2015-03-17)
+
+* Fix: Empty header line causes crash
+
 version 2.2.0 (2015-03-04)
 
 * New: support adding tags and other attributes to new notes before they are synced to the server.
