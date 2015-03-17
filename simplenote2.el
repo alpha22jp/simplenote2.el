@@ -8,7 +8,7 @@
 ;;     by Konstantinos Efstathiou <konstantinos@efstathiou.gr>
 ;; Package-Requires: ((request-deferred "0.2.0"))
 ;; Keywords: simplenote
-;; Version: 2.2.0
+;; Version: 2.2.1
 
 ;; This program is free software; you can redistribute it and/or modify it under
 ;; the terms of the GNU General Public License as published by the Free Software
