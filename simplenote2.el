@@ -616,6 +616,7 @@ setting."
         (funcall (if (nth 5 note-info)
                      simplenote2-markdown-notes-mode
                    simplenote2-notes-mode))))
+    (simplenote2-note-mode)
     ;; Refresh notes display after save
     (add-hook 'after-save-hook
               (lambda () (simplenote2-browser-refresh))
@@ -1056,6 +1057,18 @@ ARG is specified, this function resets the filter already set."
              simplenote2-new-notes-info)
     (simplenote2-browser-refresh)
     (simplenote2--open-note new-filename)))
+
+(defvar simplenote2-note-mode-map (make-sparse-keymap))
+
+(define-minor-mode simplenote2-note-mode ()
+  "Enable for Simplenote note"
+  :group      'simplenote2
+  :init-value nil
+  :global     nil
+  :keymap     simplenote2-note-mode-map
+  :lighter    " S-note"
+  (if simplenote2-note-mode
+      (run-hooks 'simplenote2-note-mode-hook)))
 
 
 (provide 'simplenote2)
