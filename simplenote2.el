@@ -93,14 +93,14 @@ to edit them, set this option to `markdown-mode'."
   :safe 'booleanp
   :group 'simplenote2)
 
-(defvar simplenote2-mode-hook nil)
+(defvar simplenote2-browser-mode-hook nil)
 
 (defcustom simplenote2-create-note-hook nil
   "List of functions to be called when a new file is created locally."
   :type 'hook
   :group 'simplenote2)
 
-(put 'simplenote2-mode 'mode-class 'special)
+(put 'simplenote2-browser-mode 'mode-class 'special)
 
 (defvar simplenote2--server-url "https://simple-note.appspot.com/")
 
@@ -754,7 +754,7 @@ are retrieved from the server forcefully."
 
 ;;; Simplenote browser
 
-(defvar simplenote2-mode-map
+(defvar simplenote2-browser-mode-map
   (let ((map (copy-keymap widget-keymap)))
     (define-key map (kbd "g") 'simplenote2-sync-notes)
     (define-key map (kbd "q") 'quit-window)
@@ -762,17 +762,17 @@ are retrieved from the server forcefully."
     (define-key map (kbd "p") 'widget-backward)
     map))
 
-(defun simplenote2-mode ()
+(defun simplenote2-browser-mode ()
   "Browse and edit Simplenote notes locally and sync with the server.
 
-\\{simplenote2-mode-map}"
+\\{simplenote2-browser-mode-map}"
   (kill-all-local-variables)
   (setq buffer-read-only t)
-  (use-local-map simplenote2-mode-map)
+  (use-local-map simplenote2-browser-mode-map)
   (simplenote2--menu-setup)
-  (setq major-mode 'simplenote2-mode
+  (setq major-mode 'simplenote2-browser-mode
         mode-name "Simplenote")
-  (run-mode-hooks 'simplenote2-mode-hook))
+  (run-mode-hooks 'simplenote2-browser-mode-hook))
 
 ;;;###autoload
 (defun simplenote2-browse ()
@@ -781,7 +781,7 @@ are retrieved from the server forcefully."
   (when (not (file-exists-p simplenote2-directory))
       (make-directory simplenote2-directory t))
   (switch-to-buffer "*Simplenote*")
-  (simplenote2-mode)
+  (simplenote2-browser-mode)
   (goto-char 1))
 
 (defun simplenote2-browser-refresh ()
@@ -844,7 +844,7 @@ are retrieved from the server forcefully."
                           when (simplenote2--tag-existp tag (nth 4 note-info))
                           collect tag))
             (simplenote2--other-note-widget file))))))
-  (use-local-map simplenote2-mode-map)
+  (use-local-map simplenote2-browser-mode-map)
   (widget-setup))
 
 (defun simplenote2-filter-note-by-tag (&optional arg)
