@@ -201,12 +201,7 @@ to edit them, set this option to `markdown-mode'."
 
 (defun simplenote2-load-notes-info ()
   (when (file-readable-p simplenote2--filename-for-notes-info)
-    (load-file simplenote2--filename-for-notes-info)
-    ;; Convert tags format from array to list for compatibility
-    (mapc (lambda (note-info)
-            (when (arrayp (nth 4 note-info))
-              (setf (nth 4 note-info) (append (nth 4 note-info) nil))))
-      (loop for v being the hash-values in simplenote2-notes-info collect v))))
+    (load-file simplenote2--filename-for-notes-info)))
 
 (defun simplenote2--save-note (note)
   "Save note information and content gotten from server."
