@@ -93,14 +93,14 @@ to edit them, set this option to `markdown-mode'."
   :safe 'booleanp
   :group 'simplenote2)
 
-(defvar simplenote2-mode-hook nil)
+(defvar simplenote2-browser-mode-hook nil)
 
 (defcustom simplenote2-create-note-hook nil
   "List of functions to be called when a new file is created locally."
   :type 'hook
   :group 'simplenote2)
 
-(put 'simplenote2-mode 'mode-class 'special)
+(put 'simplenote2-browser-mode 'mode-class 'special)
 
 (defvar simplenote2--server-url "https://simple-note.appspot.com/")
 
@@ -201,12 +201,7 @@ to edit them, set this option to `markdown-mode'."
 
 (defun simplenote2-load-notes-info ()
   (when (file-readable-p simplenote2--filename-for-notes-info)
-    (load-file simplenote2--filename-for-notes-info)
-    ;; Convert tags format from array to list for compatibility
-    (mapc (lambda (note-info)
-            (when (arrayp (nth 4 note-info))
-              (setf (nth 4 note-info) (append (nth 4 note-info) nil))))
-      (loop for v being the hash-values in simplenote2-notes-info collect v))))
+    (load-file simplenote2--filename-for-notes-info)))
 
 (defun simplenote2--save-note (note)
   "Save note information and content gotten from server."
@@ -616,6 +611,7 @@ setting."
         (funcall (if (nth 5 note-info)
                      simplenote2-markdown-notes-mode
                    simplenote2-notes-mode))))
+    (simplenote2-note-mode)
     ;; Refresh notes display after save
     (add-hook 'after-save-hook
               (lambda () (simplenote2-browser-refresh))
@@ -753,7 +749,7 @@ are retrieved from the server forcefully."
 
 ;;; Simplenote browser
 
-(defvar simplenote2-mode-map
+(defvar simplenote2-browser-mode-map
   (let ((map (copy-keymap widget-keymap)))
     (define-key map (kbd "g") 'simplenote2-sync-notes)
     (define-key map (kbd "q") 'quit-window)
@@ -761,17 +757,17 @@ are retrieved from the server forcefully."
     (define-key map (kbd "p") 'widget-backward)
     map))
 
-(defun simplenote2-mode ()
+(defun simplenote2-browser-mode ()
   "Browse and edit Simplenote notes locally and sync with the server.
 
-\\{simplenote2-mode-map}"
+\\{simplenote2-browser-mode-map}"
   (kill-all-local-variables)
   (setq buffer-read-only t)
-  (use-local-map simplenote2-mode-map)
+  (use-local-map simplenote2-browser-mode-map)
   (simplenote2--menu-setup)
-  (setq major-mode 'simplenote2-mode
+  (setq major-mode 'simplenote2-browser-mode
         mode-name "Simplenote")
-  (run-mode-hooks 'simplenote2-mode-hook))
+  (run-mode-hooks 'simplenote2-browser-mode-hook))
 
 ;;;###autoload
 (defun simplenote2-browse ()
@@ -780,7 +776,7 @@ are retrieved from the server forcefully."
   (when (not (file-exists-p simplenote2-directory))
       (make-directory simplenote2-directory t))
   (switch-to-buffer "*Simplenote*")
-  (simplenote2-mode)
+  (simplenote2-browser-mode)
   (goto-char 1))
 
 (defun simplenote2-browser-refresh ()
@@ -843,7 +839,7 @@ are retrieved from the server forcefully."
                           when (simplenote2--tag-existp tag (nth 4 note-info))
                           collect tag))
             (simplenote2--other-note-widget file))))))
-  (use-local-map simplenote2-mode-map)
+  (use-local-map simplenote2-browser-mode-map)
   (widget-setup))
 
 (defun simplenote2-filter-note-by-tag (&optional arg)
@@ -1056,6 +1052,18 @@ ARG is specified, this function resets the filter already set."
              simplenote2-new-notes-info)
     (simplenote2-browser-refresh)
     (simplenote2--open-note new-filename)))
+
+(defvar simplenote2-note-mode-map (make-sparse-keymap))
+
+(define-minor-mode simplenote2-note-mode ()
+  "Enable for Simplenote note"
+  :group      'simplenote2
+  :init-value nil
+  :global     nil
+  :keymap     simplenote2-note-mode-map
+  :lighter    " S-note"
+  (if simplenote2-note-mode
+      (run-hooks 'simplenote2-note-mode-hook)))
 
 
 (provide 'simplenote2)
