@@ -596,7 +596,7 @@ Otherwise, the local modification is discarded."
     (when begin
       (truncate-string-to-width (substring text (match-end 0)) (- simplenote2-note-head-size (string-width headline))))))
 
-(defun simplenote2--open-note (file)
+(defun simplenote2--open-note (file &optional create-flag)
   "Opens FILE in a new buffer, setting its mode, and returns the buffer.
 
 The major mode of the resulting buffer will be set to
@@ -611,6 +611,8 @@ setting."
         (funcall (if (nth 5 note-info)
                      simplenote2-markdown-notes-mode
                    simplenote2-notes-mode))))
+    (when create-flag
+      (run-hooks 'simplenote2-create-note-hook))
     (simplenote2-note-mode)
     ;; Refresh notes display after save
     (add-hook 'after-save-hook
@@ -805,11 +807,7 @@ are retrieved from the server forcefully."
                  :format "%[%v%]"
                  :help-echo "Create a new note"
                  :notify (lambda (widget &rest ignore)
-                           (let (buf)
-                             (setq buf (simplenote2--create-note-locally))
-                             (simplenote2-browser-refresh)
-                             (switch-to-buffer buf)
-                             (run-hooks 'simplenote2-create-note-hook)))
+                           (simplenote2--create-note-locally))
                  "Create new note")
   (widget-insert "\n\n")
   ;; New notes list
@@ -1051,7 +1049,7 @@ ARG is specified, this function resets the filter already set."
              (list 0 0 (simplenote2--file-mtime new-filename) 0 nil nil nil nil)
              simplenote2-new-notes-info)
     (simplenote2-browser-refresh)
-    (simplenote2--open-note new-filename)))
+    (simplenote2--open-note new-filename t)))
 
 (defvar simplenote2-note-mode-map (make-sparse-keymap))
 
