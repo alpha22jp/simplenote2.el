@@ -95,7 +95,24 @@ Emacs 23以降が必要です。Linux上のEmacs 23.3、及びEmacs 24.3でテ�
 	    (simplenote2-add-tag "tag1")))
 ```
 
+### Simplenoteノートバッファのマイナーモード
+
+ブラウザ画面からノートを開いたとき、マイナーモード `simplenote2-note-mode` が設定されます。このマイナーモードはデフォルトでは何もしませんが、以下のようにキーバインドなどを設定するのに使用できます。
+
+```.emacs
+(add-hook 'simplenote2-note-mode-hook
+          (lambda ()
+            (local-set-key (kbd "C-c C-t") 'simplenote2-add-tag)
+            (local-set-key (kbd "C-c C-c") 'simplenote2-push-buffer)
+            (local-set-key (kbd "C-c C-d") 'simplenote2-pull-buffer)))
+```
+
 ## 更新履歴
+
+version 2.2.2 (2015-04-05)
+
+* New: Simplenoteノートのバッファにマイナーモード `simplenote2-note-mode` が設定されるようにした
+* Fix: 特定の文字を含むノートの更新が失敗する不具合を修正 (JSONデータのURIエンコードの方法が間違っていた)
 
 version 2.2.1 (2015-03-17)
 

@@ -120,7 +120,24 @@ You can set tags or attributes to new notes by default using customize variable 
 	    (simplenote2-add-tag "tag1")))
 ```
 
+### Minor mode for simplenote note buffer
+
+When you open simplenote note from Simplenote browser, minor mode `simplenote2-note-mode` is applied to the buffer. This minor mode doesn't do anything by default, but it can be used for key bindings or something like below.
+
+```.emacs
+(add-hook 'simplenote2-note-mode-hook
+          (lambda ()
+            (local-set-key (kbd "C-c C-t") 'simplenote2-add-tag)
+            (local-set-key (kbd "C-c C-c") 'simplenote2-push-buffer)
+            (local-set-key (kbd "C-c C-d") 'simplenote2-pull-buffer)))
+```
+
 ## History
+
+version 2.2.2 (2015-04-05)
+
+* New: Minor mode `simplenote2-note-mode` is now applied to simplenote note buffer.
+* Fix: Notes including some sort of charactors are not updated correctly due to the wrong way of URI encoding for JSON data.
 
 version 2.2.1 (2015-03-17)
 
