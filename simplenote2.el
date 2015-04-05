@@ -367,8 +367,7 @@ server is concatenated to the index provided by INDEX."
       (lambda (token)
         (deferred:$
           (let ((post-data
-                 (list (cons "content" (url-hexify-string
-                                        (simplenote2--get-file-string file)))
+                 (list (cons "content" (simplenote2--get-file-string file))
                        (cons "version" (number-to-string
                                         (if note-info (nth 1 note-info) 0)))
                        (cons "modifydate"
@@ -392,7 +391,7 @@ server is concatenated to the index provided by INDEX."
              :type "POST"
              :params (list (cons "auth" token)
                            (cons "email" simplenote2-email))
-             :data (json-encode post-data)
+             :data (url-hexify-string (json-encode post-data))
              :headers '(("Content-Type" . "application/json"))
              :parser 'json-read))
           (deferred:nextc it
@@ -417,7 +416,7 @@ server is concatenated to the index provided by INDEX."
       (lambda (token)
         (deferred:$
           (let ((post-data
-                 (list (cons "content" (url-hexify-string content))
+                 (list (cons "content" content)
                        (cons "createdate" createdate)
                        (cons "modifydate" createdate))))
             ;; When note info exists (which means the note is under simplenote
@@ -436,7 +435,7 @@ server is concatenated to the index provided by INDEX."
              :type "POST"
              :params (list (cons "auth" token)
                            (cons "email" simplenote2-email))
-             :data (json-encode post-data)
+             :data (url-hexify-string (json-encode post-data))
              :headers '(("Content-Type" . "application/json"))
              :parser 'json-read))
           (deferred:nextc it
