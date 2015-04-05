@@ -43,6 +43,7 @@
 (require 'url)
 (require 'json)
 (require 'widget)
+(require 'wid-edit)
 (require 'request-deferred)
 
 (defcustom simplenote2-directory (expand-file-name "~/.simplenote2/")
