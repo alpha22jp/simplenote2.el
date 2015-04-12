@@ -427,12 +427,10 @@ This function works depending on where the current buffer file is located.
                 (buf (current-buffer)))
     (cond
      ;; File is located on new notes directory
-     ((string-match (simplenote2--new-notes-dir)
-                    (file-name-directory file))
+     ((string= (simplenote2--new-notes-dir) (file-name-directory file))
       (simplenote2-create-note-from-buffer))
      ;; File is located on notes directory
-     ((string-match (simplenote2--notes-dir)
-                    (file-name-directory file))
+     ((string= (simplenote2--notes-dir) (file-name-directory file))
       (lexical-let* ((key (file-name-nondirectory file))
                      (note-info (gethash key simplenote2-notes-info)))
         (save-buffer)
