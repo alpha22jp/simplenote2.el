@@ -128,7 +128,7 @@ to edit them, set this option to `markdown-mode'."
 ;;; Unitity functions
 
 (defun simplenote2--file-mtime (path)
-  (nth 5 (file-attributes path)))
+  (float-time (nth 5 (file-attributes path))))
 
 (defun simplenote2--get-file-string (file)
   (with-temp-buffer
@@ -368,7 +368,7 @@ server is concatenated to the index provided by INDEX."
         (deferred:$
           (let* ((modifydate
                   ;; Omit microseconds since server doesn't accept it
-                  ((format "%.6f" (float-time (simplenote2--file-mtime file)))))
+                  (format "%.6f" (simplenote2--file-mtime file)))
                  (post-data
                   (list (cons "content" (simplenote2--get-file-string file))
                         (cons "modifydate" modifydate))))
@@ -431,8 +431,7 @@ This function works depending on where the current buffer file is located.
                      (note-info (gethash key simplenote2-notes-info)))
         (save-buffer)
         (if (and note-info
-                 (or (time-less-p (seconds-to-time (nth 3 note-info))
-                                  (simplenote2--file-mtime file))
+                 (or (< (nth 3 note-info) (simplenote2--file-mtime file))
                      (nth 7 note-info)))
             (deferred:nextc
               (simplenote2--update-note-deferred file)
@@ -491,8 +490,7 @@ Otherwise, the local modification is discarded."
         (lexical-let* ((key (file-name-nondirectory file))
                        (note-info (gethash key simplenote2-notes-info)))
           (if (and note-info
-                   (or (time-less-p (seconds-to-time (nth 3 note-info))
-                                    (simplenote2--file-mtime file))
+                   (or (< (nth 3 note-info) (simplenote2--file-mtime file))
                        (nth 7 note-info))
                    (y-or-n-p
                     "This note appears to have been modified. Do you push it on ahead?"))
@@ -640,8 +638,7 @@ are retrieved from the server forcefully."
              (let ((note-info (gethash (file-name-nondirectory file)
                                        simplenote2-notes-info)))
                (when (and note-info
-                          (or (time-less-p (seconds-to-time (nth 3 note-info))
-                                           (simplenote2--file-mtime file))
+                          (or (< (nth 3 note-info) (simplenote2--file-mtime file))
                               (nth 7 note-info)))
                  (push file files-to-push))))
            (mapcar (lambda (file)
