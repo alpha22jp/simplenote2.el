@@ -379,8 +379,7 @@ server is concatenated to the index provided by INDEX."
             (unless key (push (cons "createdate" modifydate) post-data))
             ;; Set "version" for existing note
             (when note-info
-              (push (cons "version" (number-to-string (nth 1 note-info)))
-                    post-data))
+              (push (cons "version" (nth 1 note-info)) post-data))
             ;; When locally modified flag is set, update tags and systemtags
             (when (nth 7 note-info)
               (let ((system-tags []))
