@@ -1005,7 +1005,7 @@ ARG is specified, this function resets the filter already set."
     (write-region "New note" nil new-filename nil)
     ;; Save note information to 'simplenote2-new-notes-info
     (puthash (file-name-nondirectory new-filename)
-             (list 0 0 (simplenote2--file-mtime new-filename) 0 nil nil nil nil)
+             (list 0 0 0 0 nil nil nil nil)
              simplenote2-new-notes-info)
     (simplenote2-browser-refresh)
     (simplenote2--open-note new-filename t)))
