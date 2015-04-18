@@ -130,10 +130,6 @@ to edit them, set this option to `markdown-mode'."
 (defun simplenote2--file-mtime (path)
   (nth 5 (file-attributes path)))
 
-(defun simplenote2--time-to-seconds (time)
-  ;; Use "format" to omit microseconds since server doesn't accept it
-  (format "%.6f" (float-time time)))
-
 (defun simplenote2--get-file-string (file)
   (with-temp-buffer
     (insert-file-contents file)
@@ -371,7 +367,8 @@ server is concatenated to the index provided by INDEX."
       (lambda (token)
         (deferred:$
           (let* ((modifydate
-                  (simplenote2--time-to-seconds (simplenote2--file-mtime file)))
+                  ;; Omit microseconds since server doesn't accept it
+                  ((format "%.6f" (float-time (simplenote2--file-mtime file)))))
                  (post-data
                   (list (cons "content" (simplenote2--get-file-string file))
                         (cons "modifydate" modifydate))))
