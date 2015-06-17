@@ -910,7 +910,7 @@ ARG is specified, this function resets the filter already set."
         (simplenote2-browser-refresh)
         (message "%s markdown flag" (if arg "Unset" "Set"))))))
 
-(defun simplenote2-set-pinnped (&optional arg)
+(defun simplenote2-set-pinned (&optional arg)
   "Set/reset pinned flag to the note currently visiting"
   (interactive "P")
   (let* ((file (buffer-file-name))
