@@ -103,6 +103,12 @@ to edit them, set this option to `markdown-mode'."
 
 (put 'simplenote2-browser-mode 'mode-class 'special)
 
+(defcustom simplenote2-filter-note-by-and-condition nil
+  "If non-nil, tag filtering list is treated as \"AND\" condition."
+  :type 'boolean
+  :safe 'booleanp
+  :group 'simplenote2)
+
 (defvar simplenote2--server-url "https://simple-note.appspot.com/")
 
 (defvar simplenote2--email-was-read-interactively nil)
@@ -786,9 +792,14 @@ are retrieved from the server forcefully."
         (let ((note-info (gethash (file-name-nondirectory (car file))
                                   simplenote2-notes-info)))
           (when (or (not simplenote2-filter-note-tag-list)
-                    (loop for tag in simplenote2-filter-note-tag-list
-                          when (simplenote2--tag-existp tag (nth 4 note-info))
-                          collect tag))
+                    (let* ((tag-list (nth 4 note-info))
+                           (tag-filtered
+                            (loop for tag in simplenote2-filter-note-tag-list
+                                  when (simplenote2--tag-existp tag tag-list)
+                                  collect tag)))
+                      (if simplenote2-filter-note-by-and-condition
+                          (equal tag-filtered simplenote2-filter-note-tag-list)
+                        (consp tag-filtered))))
             (simplenote2--other-note-widget file))))))
   (use-local-map simplenote2-browser-mode-map)
   (widget-setup))
