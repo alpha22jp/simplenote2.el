@@ -806,7 +806,7 @@ ARG is specified, this function resets the filter already set."
       (setq tag (completing-read "Input tag: " simplenote2-tag-list))
       (while (not (string= tag ""))
         (push tag simplenote2-filter-note-tag-list)
-        (setq tag (read-string "Input tag: ")))))
+        (setq tag (completing-read "Input tag: " simplenote2-tag-list)))))
   (simplenote2-browser-refresh))
 
 (defun simplenote2-add-tag (arg)
