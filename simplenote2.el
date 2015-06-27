@@ -748,6 +748,9 @@ are retrieved from the server forcefully."
       (set-buffer "*Simplenote*")
       (simplenote2--menu-setup))))
 
+(defun simplenote2--toggle-filter-condition ()
+(setq simplenote2-filter-note-by-and-condition
+      (if simplenote2-filter-note-by-and-condition nil t)))
 
 (defun simplenote2--menu-setup ()
   (let ((inhibit-read-only t))
@@ -768,6 +771,15 @@ are retrieved from the server forcefully."
                  :notify (lambda (widget &rest ignore)
                            (simplenote2--create-note-locally))
                  "Create new note")
+  (widget-insert "  ")
+  (widget-create 'link
+                 :format "%[%v%]"
+                 :help-echo "Filter condition"
+                 :notify (lambda (widget &rest ignore)
+                           (simplenote2--toggle-filter-condition)
+                           (simplenote2-browser-refresh))
+                 (format "Filter condition: %s"
+                         (if simplenote2-filter-note-by-and-condition "AND" "OR")))
   (widget-insert "\n\n")
   ;; New notes list
   (let ((new-notes (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$")))
