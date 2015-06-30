@@ -774,11 +774,11 @@ are retrieved from the server forcefully."
   (widget-insert "  ")
   (widget-create 'link
                  :format "%[%v%]"
-                 :help-echo "Filter condition"
+                 :help-echo "Toggle tag filter condition"
                  :notify (lambda (widget &rest ignore)
                            (simplenote2--toggle-filter-condition)
                            (simplenote2-browser-refresh))
-                 (format "Filter condition: %s"
+                 (format "Tag filter condition: %s"
                          (if simplenote2-filter-note-by-and-condition "AND" "OR")))
   (widget-insert "\n\n")
   ;; New notes list
