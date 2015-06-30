@@ -103,6 +103,12 @@ to edit them, set this option to `markdown-mode'."
 
 (put 'simplenote2-browser-mode 'mode-class 'special)
 
+(defcustom simplenote2-filter-note-by-and-condition nil
+  "If non-nil, tag filtering list is treated as \"AND\" condition."
+  :type 'boolean
+  :safe 'booleanp
+  :group 'simplenote2)
+
 (defvar simplenote2--server-url "https://simple-note.appspot.com/")
 
 (defvar simplenote2--email-was-read-interactively nil)
@@ -128,11 +134,7 @@ to edit them, set this option to `markdown-mode'."
 ;;; Unitity functions
 
 (defun simplenote2--file-mtime (path)
-  (nth 5 (file-attributes path)))
-
-(defun simplenote2--time-to-seconds (time)
-  ;; Use "format" to omit microseconds since server doesn't accept it
-  (format "%.6f" (float-time time)))
+  (float-time (nth 5 (file-attributes path))))
 
 (defun simplenote2--get-file-string (file)
   (with-temp-buffer
@@ -358,70 +360,30 @@ server is concatenated to the index provided by INDEX."
                   (progn (message "Could not delete note %s" key) nil)
                 (request-response-data res)))))))))
 
-(defun simplenote2--update-note-deferred (key)
-  "Request server to update note for KEY with local data"
-  (lexical-let ((key key)
-                (file (simplenote2--filename-for-note key))
-                (note-info (gethash key simplenote2-notes-info)))
+(defun simplenote2--update-note-deferred (file)
+  "Request server to update or create note with local data"
+  (lexical-let* ((file file)
+                 (key (file-name-nondirectory file))
+                 (note-info (or (gethash key simplenote2-notes-info)
+                                (gethash key simplenote2-new-notes-info))))
+    (unless (string= (simplenote2--notes-dir) (file-name-directory file))
+      (setq key nil))
     (deferred:nextc
       (simplenote2--get-token-deferred)
       (lambda (token)
         (deferred:$
-          (let ((post-data
-                 (list (cons "content" (simplenote2--get-file-string file))
-                       (cons "version" (number-to-string
-                                        (if note-info (nth 1 note-info) 0)))
-                       (cons "modifydate"
-                             (simplenote2--time-to-seconds
-                              (simplenote2--file-mtime file))))))
+          (let* ((modifydate
+                  ;; Omit microseconds since server doesn't accept it
+                  (format "%.6f" (simplenote2--file-mtime file)))
+                 (post-data
+                  (list (cons "content" (simplenote2--get-file-string file))
+                        (cons "modifydate" modifydate))))
+            ;; Set "createdate" for new note
+            (unless key (push (cons "createdate" modifydate) post-data))
+            ;; Set "version" for existing note
+            (when note-info
+              (push (cons "version" (nth 1 note-info)) post-data))
             ;; When locally modified flag is set, update tags and systemtags
-            (when (nth 7 note-info)
-              (let ((system-tags []))
-                (when (nth 5 note-info)
-                  (setf system-tags (vconcat system-tags ["markdown"])))
-                (when (nth 6 note-info)
-                  (setf system-tags (vconcat system-tags ["pinned"])))
-                (push (cons "systemtags" system-tags) post-data))
-              ;; json-encode can handle list as the same as array, but only
-              ;; "empty" tags should be described as [] because empty list
-              ;; (which is the same as nil) is converted to "null".
-              (push (cons "tags" (if (nth 4 note-info) (nth 4 note-info) []))
-                    post-data))
-            (request-deferred
-             (concat simplenote2--server-url "api2/data/" key)
-             :type "POST"
-             :params (list (cons "auth" token)
-                           (cons "email" simplenote2-email))
-             :data (url-hexify-string (json-encode post-data))
-             :headers '(("Content-Type" . "application/json"))
-             :parser 'json-read))
-          (deferred:nextc it
-            (lambda (res)
-              (if (request-response-error-thrown res)
-                  (progn (message "Could not update note %s" key) nil)
-                (simplenote2--save-note (request-response-data res))))))))))
-
-(defun simplenote2--create-note-deferred (file)
-  "Request server to create a note whose content is FILE"
-  (lexical-let ((file file)
-                (note-info
-                 (and (string-match (simplenote2--new-notes-dir)
-                                     (file-name-directory file))
-                       (gethash (file-name-nondirectory file)
-                                simplenote2-new-notes-info)))
-                (content (simplenote2--get-file-string file))
-                (createdate (simplenote2--time-to-seconds
-                             (simplenote2--file-mtime file))))
-    (deferred:nextc
-      (simplenote2--get-token-deferred)
-      (lambda (token)
-        (deferred:$
-          (let ((post-data
-                 (list (cons "content" content)
-                       (cons "createdate" createdate)
-                       (cons "modifydate" createdate))))
-            ;; When note info exists (which means the note is under simplenote
-            ;; dir), and locally modified flag is set, add tags and systemtags
             (when (nth 7 note-info)
               (let ((system-tags []))
                 (when (nth 5 note-info)
@@ -432,7 +394,8 @@ server is concatenated to the index provided by INDEX."
               (when (nth 4 note-info)
                 (push (cons "tags" (nth 4 note-info)) post-data)))
             (request-deferred
-             (concat simplenote2--server-url "api2/data")
+             (concat simplenote2--server-url "api2/data"
+                     (and key (concat "/" key)))
              :type "POST"
              :params (list (cons "auth" token)
                            (cons "email" simplenote2-email))
@@ -442,9 +405,11 @@ server is concatenated to the index provided by INDEX."
           (deferred:nextc it
             (lambda (res)
               (if (request-response-error-thrown res)
-                  (progn (message "Could not create note") nil)
+                  (progn (if key (message "Could not update note %s" key)
+                           (message "Could not create note %s" file)) nil)
                 (let ((note (request-response-data res)))
-                  (push (cons 'content content) note)
+                  (unless (assq 'content note)
+                    (push (cons 'content (simplenote2--get-file-string file)) note))
                   (simplenote2--save-note note))))))))))
 
 
@@ -464,21 +429,18 @@ This function works depending on where the current buffer file is located.
                 (buf (current-buffer)))
     (cond
      ;; File is located on new notes directory
-     ((string-match (simplenote2--new-notes-dir)
-                    (file-name-directory file))
+     ((string= (simplenote2--new-notes-dir) (file-name-directory file))
       (simplenote2-create-note-from-buffer))
      ;; File is located on notes directory
-     ((string-match (simplenote2--notes-dir)
-                    (file-name-directory file))
+     ((string= (simplenote2--notes-dir) (file-name-directory file))
       (lexical-let* ((key (file-name-nondirectory file))
                      (note-info (gethash key simplenote2-notes-info)))
         (save-buffer)
         (if (and note-info
-                 (or (time-less-p (seconds-to-time (nth 3 note-info))
-                                  (simplenote2--file-mtime file))
+                 (or (< (nth 3 note-info) (simplenote2--file-mtime file))
                      (nth 7 note-info)))
             (deferred:nextc
-              (simplenote2--update-note-deferred key)
+              (simplenote2--update-note-deferred file)
               (lambda (ret)
                 (if ret (progn
                           (message "Pushed note %s" key)
@@ -505,7 +467,7 @@ and can be handled from the browser screen."
         (message "Can't create note from this buffer")
       (save-buffer)
       (deferred:nextc
-        (simplenote2--create-note-deferred file)
+        (simplenote2--update-note-deferred file)
         (lambda (key)
           (if (not key)
               (message "Failed to create note")
@@ -534,8 +496,7 @@ Otherwise, the local modification is discarded."
         (lexical-let* ((key (file-name-nondirectory file))
                        (note-info (gethash key simplenote2-notes-info)))
           (if (and note-info
-                   (or (time-less-p (seconds-to-time (nth 3 note-info))
-                                    (simplenote2--file-mtime file))
+                   (or (< (nth 3 note-info) (simplenote2--file-mtime file))
                        (nth 7 note-info))
                    (y-or-n-p
                     "This note appears to have been modified. Do you push it on ahead?"))
@@ -667,7 +628,7 @@ are retrieved from the server forcefully."
          (mapcar (lambda (file)
                    (lexical-let ((file file))
                      (deferred:nextc
-                       (simplenote2--create-note-deferred file)
+                       (simplenote2--update-note-deferred file)
                        (lambda (key) (when key
                                        (message "Created on local: %s" key)
                                        (let ((buf (get-file-buffer file)))
@@ -683,16 +644,14 @@ are retrieved from the server forcefully."
              (let ((note-info (gethash (file-name-nondirectory file)
                                        simplenote2-notes-info)))
                (when (and note-info
-                          (or (time-less-p (seconds-to-time (nth 3 note-info))
-                                           (simplenote2--file-mtime file))
+                          (or (< (nth 3 note-info) (simplenote2--file-mtime file))
                               (nth 7 note-info)))
                  (push file files-to-push))))
            (mapcar (lambda (file)
-                     (lexical-let ((key (file-name-nondirectory file)))
-                       (deferred:nextc
-                         (simplenote2--update-note-deferred key)
-                         (lambda (ret) (when (eq ret key)
-                                         (message "Updated on local: %s" key))))))
+                     (deferred:nextc
+                       (simplenote2--update-note-deferred file)
+                       (lambda (key)
+                         (when (key) (message "Updated on local: %s" key)))))
                    files-to-push))))
       ;; Step2: Sync update on server
       (deferred:nextc it
@@ -789,6 +748,9 @@ are retrieved from the server forcefully."
       (set-buffer "*Simplenote*")
       (simplenote2--menu-setup))))
 
+(defun simplenote2--toggle-filter-condition ()
+(setq simplenote2-filter-note-by-and-condition
+      (if simplenote2-filter-note-by-and-condition nil t)))
 
 (defun simplenote2--menu-setup ()
   (let ((inhibit-read-only t))
@@ -809,6 +771,15 @@ are retrieved from the server forcefully."
                  :notify (lambda (widget &rest ignore)
                            (simplenote2--create-note-locally))
                  "Create new note")
+  (widget-insert "  ")
+  (widget-create 'link
+                 :format "%[%v%]"
+                 :help-echo "Toggle tag filter condition"
+                 :notify (lambda (widget &rest ignore)
+                           (simplenote2--toggle-filter-condition)
+                           (simplenote2-browser-refresh))
+                 (format "Tag filter condition: %s"
+                         (if simplenote2-filter-note-by-and-condition "AND" "OR")))
   (widget-insert "\n\n")
   ;; New notes list
   (let ((new-notes (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$")))
@@ -833,9 +804,14 @@ are retrieved from the server forcefully."
         (let ((note-info (gethash (file-name-nondirectory (car file))
                                   simplenote2-notes-info)))
           (when (or (not simplenote2-filter-note-tag-list)
-                    (loop for tag in simplenote2-filter-note-tag-list
-                          when (simplenote2--tag-existp tag (nth 4 note-info))
-                          collect tag))
+                    (let* ((tag-list (nth 4 note-info))
+                           (tag-filtered
+                            (loop for tag in simplenote2-filter-note-tag-list
+                                  when (simplenote2--tag-existp tag tag-list)
+                                  collect tag)))
+                      (if simplenote2-filter-note-by-and-condition
+                          (equal tag-filtered simplenote2-filter-note-tag-list)
+                        (consp tag-filtered))))
             (simplenote2--other-note-widget file))))))
   (use-local-map simplenote2-browser-mode-map)
   (widget-setup))
@@ -853,7 +829,7 @@ ARG is specified, this function resets the filter already set."
       (setq tag (completing-read "Input tag: " simplenote2-tag-list))
       (while (not (string= tag ""))
         (push tag simplenote2-filter-note-tag-list)
-        (setq tag (read-string "Input tag: ")))))
+        (setq tag (completing-read "Input tag: " simplenote2-tag-list)))))
   (simplenote2-browser-refresh))
 
 (defun simplenote2-add-tag (arg)
@@ -1046,7 +1022,7 @@ ARG is specified, this function resets the filter already set."
     (write-region "New note" nil new-filename nil)
     ;; Save note information to 'simplenote2-new-notes-info
     (puthash (file-name-nondirectory new-filename)
-             (list 0 0 (simplenote2--file-mtime new-filename) 0 nil nil nil nil)
+             (list 0 0 0 0 nil nil nil nil)
              simplenote2-new-notes-info)
     (simplenote2-browser-refresh)
     (simplenote2--open-note new-filename t)))
