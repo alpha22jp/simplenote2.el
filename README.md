@@ -137,7 +137,7 @@ When you open simplenote note from Simplenote browser, minor mode `simplenote2-n
 version 2.2.2 (2015-04-05)
 
 * New: Minor mode `simplenote2-note-mode` is now applied to simplenote note buffer.
-* Fix: Notes including some sort of charactors are not updated correctly due to the wrong way of URI encoding for JSON data.
+* Fix: Notes including some sort of characters are not updated correctly due to the wrong way of URI encoding for JSON data.
 
 version 2.2.1 (2015-03-17)
 
@@ -152,7 +152,7 @@ version 2.2.0 (2015-03-04)
 
 version 2.1.1 (2015-02-25)
 
-* Fix: some charactors can't be synced due to lack of URI encode.
+* Fix: some characters can't be synced due to lack of URI encode.
 
 version 2.1.0 (2015-02-22)
 
