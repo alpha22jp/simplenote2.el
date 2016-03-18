@@ -123,9 +123,6 @@ to edit them, set this option to `markdown-mode'."
 
 (defconst simplenote2-notes-info-version 1)
 
-(defvar simplenote2--filename-for-notes-info
-  (concat (file-name-as-directory simplenote2-directory) ".notes-info.el"))
-
 (defvar simplenote2-filter-note-tag-list nil)
 
 (defvar simplenote2--sync-process-running nil)
@@ -189,6 +186,9 @@ to edit them, set this option to `markdown-mode'."
         (insert (format "\n        %S" e)))
       (insert "\n        ))\n"))))
 
+(defun simplenote2--filename-for-notes-info ()
+  (concat (file-name-as-directory simplenote2-directory) ".notes-info.el"))
+
 (defun simplenote2-save-notes-info ()
   (condition-case error
       (with-temp-buffer
@@ -198,13 +198,13 @@ to edit them, set this option to `markdown-mode'."
         (simplenote2--dump-variable 'simplenote2-new-notes-info)
         (simplenote2--dump-variable 'simplenote2-tag-list)
         (simplenote2--dump-variable 'simplenote2-notes-info-version)
-        (write-file simplenote2--filename-for-notes-info)
+        (write-file (simplenote2--filename-for-notes-info))
         nil)
     (error (warn "Simplenote2: %s" (error-message-string error)))))
 
 (defun simplenote2-load-notes-info ()
-  (when (file-readable-p simplenote2--filename-for-notes-info)
-    (load-file simplenote2--filename-for-notes-info)))
+  (when (file-readable-p (simplenote2--filename-for-notes-info))
+    (load-file (simplenote2--filename-for-notes-info))))
 
 (defun simplenote2--save-note (note)
   "Save note information and content gotten from server."
