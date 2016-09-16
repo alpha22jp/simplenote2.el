@@ -575,6 +575,8 @@ setting."
     (when create-flag
       (run-hooks 'simplenote2-create-note-hook))
     (simplenote2-note-mode)
+    ;; Rename buffer so the title isn't just the filename hash
+    (rename-buffer (simplenote2--note-headline (buffer-string)))
     ;; Refresh notes display after save
     (add-hook 'after-save-hook
               (lambda () (simplenote2-browser-refresh))
