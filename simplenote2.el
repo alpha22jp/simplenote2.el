@@ -726,7 +726,6 @@ are retrieved from the server forcefully."
 
 \\{simplenote2-browser-mode-map}"
   (kill-all-local-variables)
-  (setq buffer-read-only t)
   (use-local-map simplenote2-browser-mode-map)
   (simplenote2--menu-setup)
   (setq major-mode 'simplenote2-browser-mode
