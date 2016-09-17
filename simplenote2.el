@@ -754,11 +754,39 @@ are retrieved from the server forcefully."
 (setq simplenote2-filter-note-by-and-condition
       (if simplenote2-filter-note-by-and-condition nil t)))
 
+(defun simplenote2--list-files ()
+  (let (files)
+    (setq files (append
+                 (mapcar (lambda (file) (cons file nil))
+                         (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
+                 (mapcar (lambda (file) (cons file t))
+                         (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
+    (when files
+      (setq files (sort files (lambda (p1 p2) (simplenote2--file-newer-p (car p1) (car p2)))))
+      (setq files (sort files (lambda (p1 p2) (simplenote2--pinned-note-p (car p1) (car p2)))))
+      (widget-insert "== NOTES")
+      (dolist (tag simplenote2-filter-note-tag-list)
+        (widget-insert (format " [%s]" tag)))
+      (widget-insert "\n\n")
+      (dolist (file files)
+        (let ((note-info (gethash (file-name-nondirectory (car file))
+                                  simplenote2-notes-info)))
+          (when (or (not simplenote2-filter-note-tag-list)
+                    (let* ((tag-list (nth 4 note-info))
+                           (tag-filtered
+                            (loop for tag in simplenote2-filter-note-tag-list
+                                  when (simplenote2--tag-existp tag tag-list)
+                                  collect tag)))
+                      (if simplenote2-filter-note-by-and-condition
+                          (equal tag-filtered simplenote2-filter-note-tag-list)
+                        (consp tag-filtered))))
+            (simplenote2--other-note-widget file)))))))
+
+;; Eventually this will do the work of applying the regex and whatnot
 (setq simplenote2--search-field
       (lambda (widget &rest ignore)
         (let ((regexp (widget-value widget)))
           nil)))
-
 
 (defun simplenote2--menu-setup ()
   (let ((inhibit-read-only t))
@@ -801,32 +829,7 @@ are retrieved from the server forcefully."
       (widget-insert "== NEW NOTES\n\n")
       (mapc 'simplenote2--new-note-widget new-notes)))
   ;; Other notes list
-  (let (files)
-    (setq files (append
-                 (mapcar (lambda (file) (cons file nil))
-                         (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
-                 (mapcar (lambda (file) (cons file t))
-                         (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
-    (when files
-      (setq files (sort files (lambda (p1 p2) (simplenote2--file-newer-p (car p1) (car p2)))))
-      (setq files (sort files (lambda (p1 p2) (simplenote2--pinned-note-p (car p1) (car p2)))))
-      (widget-insert "== NOTES")
-      (dolist (tag simplenote2-filter-note-tag-list)
-        (widget-insert (format " [%s]" tag)))
-      (widget-insert "\n\n")
-      (dolist (file files)
-        (let ((note-info (gethash (file-name-nondirectory (car file))
-                                  simplenote2-notes-info)))
-          (when (or (not simplenote2-filter-note-tag-list)
-                    (let* ((tag-list (nth 4 note-info))
-                           (tag-filtered
-                            (loop for tag in simplenote2-filter-note-tag-list
-                                  when (simplenote2--tag-existp tag tag-list)
-                                  collect tag)))
-                      (if simplenote2-filter-note-by-and-condition
-                          (equal tag-filtered simplenote2-filter-note-tag-list)
-                        (consp tag-filtered))))
-            (simplenote2--other-note-widget file))))))
+  (simplenote2--list-files)
   (use-local-map simplenote2-browser-mode-map)
   (widget-setup))
 
