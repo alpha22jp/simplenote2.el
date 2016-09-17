@@ -7,6 +7,7 @@
 ;; Based on: simplenote.el
 ;;     by Konstantinos Efstathiou <konstantinos@efstathiou.gr>
 ;; Package-Requires: ((request-deferred "0.2.0"))
+;; Package-Version: 20160916.622
 ;; Keywords: simplenote
 ;; Version: 2.2.2
 
@@ -29,7 +30,7 @@
 ;; This is a new version of simplenote.el which assists the interaction with
 ;; Simplenote (http://app.simplenote.com/). The major improvement points from
 ;; the original version are
-;; 
+;;
 ;; * Use of Simplenote API ver.2 to interact with server which can provide the
 ;;   support of tags, automatic merge of notes, and some other features.
 ;; * Asynchronous and concurrent access to server which brings faster sync of
@@ -147,11 +148,11 @@ to edit them, set this option to `markdown-mode'."
 
 (defun simplenote2--make-tag-list ()
   (let ((files
-	 (mapcar 'file-name-nondirectory
-		 (append
-		  (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$")
-		  (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
-	tag-list)
+     (mapcar 'file-name-nondirectory
+         (append
+          (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$")
+          (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
+    tag-list)
     (dolist (file files)
       (let ((note-info (gethash file simplenote2-notes-info)))
         (dolist (tag (nth 4 note-info))
@@ -418,7 +419,7 @@ server is concatenated to the index provided by INDEX."
 (defun simplenote2-push-buffer ()
   "Push changes to server which are added to the note currently visiting
 
-This function works depending on where the current buffer file is located. 
+This function works depending on where the current buffer file is located.
 1) If the file is on new note directory, it does just the same process as
    `simplenote2-create-note-from-buffer'.
 2) If the file is on notes directory, it requests server to merge changes
