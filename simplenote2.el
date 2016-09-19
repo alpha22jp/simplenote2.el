@@ -122,6 +122,8 @@ to edit them, set this option to `markdown-mode'."
 
 (defvar simplenote2-tag-list nil)
 
+(defvar simplenote2-filtered-notes-list nil)
+
 (defconst simplenote2-notes-info-version 1)
 
 (defvar simplenote2-filter-note-tag-list nil)
@@ -785,8 +787,11 @@ are retrieved from the server forcefully."
 ;; Eventually this will do the work of applying the regex and whatnot
 (setq simplenote2--search-field
       (lambda (widget &rest ignore)
-        (let ((regexp (widget-value widget)))
-          nil)))
+        ;; TODO refactor this
+        (let* ((regexp (widget-value widget))
+               (grep-results (shell-command-to-string (concat "grep -il ~/.simplenote2/notes/* -e " regexp))))
+          ; (message "setting simplenote2-filtered-notes-list")
+          (setq simplenote2-filtered-notes-list (split-string grep-results "\n" t)))))
 
 (defun simplenote2--menu-setup ()
   (let ((inhibit-read-only t))
