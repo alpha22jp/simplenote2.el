@@ -820,10 +820,17 @@ are retrieved from the server forcefully."
                          (if simplenote2-filter-note-by-and-condition "AND" "OR")))
   ;; Search field
   (widget-insert "\n\n")
-  (widget-create 'editable-field
-                 :size 50
-                 :format "Search notes for: %v "
-                 :action simplenote2--search-field)
+  (let ((search-field
+         (widget-create 'editable-field
+                        :size 40
+                        :format "Search notes for:\n%v "
+                        :action simplenote2--search-field)))
+    (widget-insert " ")
+    (widget-create-child-and-convert
+     search-field 'push-button
+     :tag " Search "
+     :action (lambda (widget &optional _event)
+               (funcall simplenote2--search-field (widget-get widget :parent)))))
   (widget-insert "\n\n")
   ;; New notes list
   (let ((new-notes (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$")))
