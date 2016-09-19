@@ -785,12 +785,22 @@ are retrieved from the server forcefully."
 (setq simplenote2--search-field
       (lambda (widget &rest ignore)
         ;; TODO refactor this
-        (let* ((regexp (widget-value widget))
-               (grep-results (shell-command-to-string (concat "grep -il ~/.simplenote2/notes/* -e " regexp))))
-          ; (message "setting simplenote2-filtered-notes-list")
-          (setq simplenote2-filtered-notes-list (split-string grep-results "\n" t)))))
+        (let* ((regexp (widget-value widget)))
+          (if (or (null regexp) (string= "" regexp))
+              (setq simplenote2-filtered-notes-list nil)
+            (setq simplenote2-filtered-notes-list
+                  (split-string
+                   (shell-command-to-string
+                    (concat "grep -il " (simplenote2--notes-dir) "/*" " -e "
+                            (shell-quote-argument regexp))) "\n" t "\s"))))
+        (when simplenote2-filtered-notes-list
+          (setq simplenote2-filtered-notes-list
+                (mapcar (lambda (file) (cons file nil)) simplenote2-filtered-notes-list)))
+        (simplenote2-browser-refresh)))
+
 
 (defun simplenote2--menu-setup ()
+  (kill-all-local-variables)
   (let ((inhibit-read-only t))
     (erase-buffer))
   (remove-overlays)
@@ -828,9 +838,15 @@ are retrieved from the server forcefully."
     (widget-insert " ")
     (widget-create-child-and-convert
      search-field 'push-button
-     :tag " Search "
+     :tag "Search"
      :action (lambda (widget &optional _event)
                (funcall simplenote2--search-field (widget-get widget :parent)))))
+  (widget-insert " ")
+  (widget-create 'push-button
+                 :tag "Clear search"
+                 :action (lambda (widget &optional _event)
+                           (setq simplenote2-filtered-notes-list nil)
+                           (simplenote2-browser-refresh)))
   (widget-insert "\n\n")
   ;; New notes list
   (let ((new-notes (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$")))
