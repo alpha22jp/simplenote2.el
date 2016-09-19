@@ -756,15 +756,12 @@ are retrieved from the server forcefully."
 (setq simplenote2-filter-note-by-and-condition
       (if simplenote2-filter-note-by-and-condition nil t)))
 
-(defun simplenote2--list-files ()
+(defun simplenote2--list-files (passed-files)
+  ;; If we're not searching from the filter, we need all of the files. If we
+  ;; are, then we need *only* those files from that match the pattern
   (let (files)
-    (setq files (append
-                 (mapcar (lambda (file) (cons file nil))
-                         (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
-                 (mapcar (lambda (file) (cons file t))
-                         (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
-    (when files
-      (setq files (sort files (lambda (p1 p2) (simplenote2--file-newer-p (car p1) (car p2)))))
+    (when passed-files
+      (setq files (sort passed-files (lambda (p1 p2) (simplenote2--file-newer-p (car p1) (car p2)))))
       (setq files (sort files (lambda (p1 p2) (simplenote2--pinned-note-p (car p1) (car p2)))))
       (widget-insert "== NOTES")
       (dolist (tag simplenote2-filter-note-tag-list)
@@ -834,7 +831,14 @@ are retrieved from the server forcefully."
       (widget-insert "== NEW NOTES\n\n")
       (mapc 'simplenote2--new-note-widget new-notes)))
   ;; Other notes list
-  (simplenote2--list-files)
+  (let ((files
+         (or simplenote2-filtered-notes-list
+             (append
+              (mapcar (lambda (file) (cons file nil))
+                      (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
+              (mapcar (lambda (file) (cons file t))
+                      (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))))
+    (simplenote2--list-files files))
   (use-local-map simplenote2-browser-mode-map)
   (widget-setup))
 
