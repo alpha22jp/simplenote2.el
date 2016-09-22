@@ -7,6 +7,7 @@
 ;; Based on: simplenote.el
 ;;     by Konstantinos Efstathiou <konstantinos@efstathiou.gr>
 ;; Package-Requires: ((request-deferred "0.2.0"))
+;; Package-Version: 20160916.622
 ;; Keywords: simplenote
 ;; Version: 2.2.2
 
@@ -29,7 +30,7 @@
 ;; This is a new version of simplenote.el which assists the interaction with
 ;; Simplenote (http://app.simplenote.com/). The major improvement points from
 ;; the original version are
-;; 
+;;
 ;; * Use of Simplenote API ver.2 to interact with server which can provide the
 ;;   support of tags, automatic merge of notes, and some other features.
 ;; * Asynchronous and concurrent access to server which brings faster sync of
@@ -121,6 +122,8 @@ to edit them, set this option to `markdown-mode'."
 
 (defvar simplenote2-tag-list nil)
 
+(defvar simplenote2-filtered-notes-list nil)
+
 (defconst simplenote2-notes-info-version 1)
 
 (defvar simplenote2-filter-note-tag-list nil)
@@ -147,11 +150,11 @@ to edit them, set this option to `markdown-mode'."
 
 (defun simplenote2--make-tag-list ()
   (let ((files
-	 (mapcar 'file-name-nondirectory
-		 (append
-		  (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$")
-		  (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
-	tag-list)
+     (mapcar 'file-name-nondirectory
+         (append
+          (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$")
+          (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
+    tag-list)
     (dolist (file files)
       (let ((note-info (gethash file simplenote2-notes-info)))
         (dolist (tag (nth 4 note-info))
@@ -418,7 +421,7 @@ server is concatenated to the index provided by INDEX."
 (defun simplenote2-push-buffer ()
   "Push changes to server which are added to the note currently visiting
 
-This function works depending on where the current buffer file is located. 
+This function works depending on where the current buffer file is located.
 1) If the file is on new note directory, it does just the same process as
    `simplenote2-create-note-from-buffer'.
 2) If the file is on notes directory, it requests server to merge changes
@@ -725,7 +728,6 @@ are retrieved from the server forcefully."
 
 \\{simplenote2-browser-mode-map}"
   (kill-all-local-variables)
-  (setq buffer-read-only t)
   (use-local-map simplenote2-browser-mode-map)
   (simplenote2--menu-setup)
   (setq major-mode 'simplenote2-browser-mode
@@ -754,7 +756,51 @@ are retrieved from the server forcefully."
 (setq simplenote2-filter-note-by-and-condition
       (if simplenote2-filter-note-by-and-condition nil t)))
 
+(defun simplenote2--list-files (passed-files)
+  ;; If we're not searching from the filter, we need all of the files. If we
+  ;; are, then we need *only* those files from that match the pattern
+  (let (files)
+    (when passed-files
+      (setq files (sort passed-files (lambda (p1 p2) (simplenote2--file-newer-p (car p1) (car p2)))))
+      (setq files (sort files (lambda (p1 p2) (simplenote2--pinned-note-p (car p1) (car p2)))))
+      (widget-insert "== NOTES")
+      (dolist (tag simplenote2-filter-note-tag-list)
+        (widget-insert (format " [%s]" tag)))
+      (widget-insert "\n\n")
+      (dolist (file files)
+        (let ((note-info (gethash (file-name-nondirectory (car file))
+                                  simplenote2-notes-info)))
+          (when (or (not simplenote2-filter-note-tag-list)
+                    (let* ((tag-list (nth 4 note-info))
+                           (tag-filtered
+                            (loop for tag in simplenote2-filter-note-tag-list
+                                  when (simplenote2--tag-existp tag tag-list)
+                                  collect tag)))
+                      (if simplenote2-filter-note-by-and-condition
+                          (equal tag-filtered simplenote2-filter-note-tag-list)
+                        (consp tag-filtered))))
+            (simplenote2--other-note-widget file)))))))
+
+;; Eventually this will do the work of applying the regex and whatnot
+(setq simplenote2--search-field
+      (lambda (widget &rest ignore)
+        ;; TODO refactor this
+        (let* ((regexp (widget-value widget)))
+          (if (or (null regexp) (string= "" regexp))
+              (setq simplenote2-filtered-notes-list nil)
+            (setq simplenote2-filtered-notes-list
+                  (split-string
+                   (shell-command-to-string
+                    (concat "grep -il " (simplenote2--notes-dir) "/*" " -e "
+                            (shell-quote-argument regexp))) "\n" t "\s"))))
+        (when simplenote2-filtered-notes-list
+          (setq simplenote2-filtered-notes-list
+                (mapcar (lambda (file) (cons file nil)) simplenote2-filtered-notes-list)))
+        (simplenote2-browser-refresh)))
+
+
 (defun simplenote2--menu-setup ()
+  (kill-all-local-variables)
   (let ((inhibit-read-only t))
     (erase-buffer))
   (remove-overlays)
@@ -782,6 +828,25 @@ are retrieved from the server forcefully."
                            (simplenote2-browser-refresh))
                  (format "Tag filter condition: %s"
                          (if simplenote2-filter-note-by-and-condition "AND" "OR")))
+  ;; Search field
+  (widget-insert "\n\n")
+  (let ((search-field
+         (widget-create 'editable-field
+                        :size 40
+                        :format "Search notes for:\n%v "
+                        :action simplenote2--search-field)))
+    (widget-insert " ")
+    (widget-create-child-and-convert
+     search-field 'push-button
+     :tag "Search"
+     :action (lambda (widget &optional _event)
+               (funcall simplenote2--search-field (widget-get widget :parent)))))
+  (widget-insert " ")
+  (widget-create 'push-button
+                 :tag "Clear search"
+                 :action (lambda (widget &optional _event)
+                           (setq simplenote2-filtered-notes-list nil)
+                           (simplenote2-browser-refresh)))
   (widget-insert "\n\n")
   ;; New notes list
   (let ((new-notes (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$")))
@@ -789,32 +854,14 @@ are retrieved from the server forcefully."
       (widget-insert "== NEW NOTES\n\n")
       (mapc 'simplenote2--new-note-widget new-notes)))
   ;; Other notes list
-  (let (files)
-    (setq files (append
-                 (mapcar (lambda (file) (cons file nil))
-                         (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
-                 (mapcar (lambda (file) (cons file t))
-                         (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
-    (when files
-      (setq files (sort files (lambda (p1 p2) (simplenote2--file-newer-p (car p1) (car p2)))))
-      (setq files (sort files (lambda (p1 p2) (simplenote2--pinned-note-p (car p1) (car p2)))))
-      (widget-insert "== NOTES")
-      (dolist (tag simplenote2-filter-note-tag-list)
-        (widget-insert (format " [%s]" tag)))
-      (widget-insert "\n\n")
-      (dolist (file files)
-        (let ((note-info (gethash (file-name-nondirectory (car file))
-                                  simplenote2-notes-info)))
-          (when (or (not simplenote2-filter-note-tag-list)
-                    (let* ((tag-list (nth 4 note-info))
-                           (tag-filtered
-                            (loop for tag in simplenote2-filter-note-tag-list
-                                  when (simplenote2--tag-existp tag tag-list)
-                                  collect tag)))
-                      (if simplenote2-filter-note-by-and-condition
-                          (equal tag-filtered simplenote2-filter-note-tag-list)
-                        (consp tag-filtered))))
-            (simplenote2--other-note-widget file))))))
+  (let ((files
+         (or simplenote2-filtered-notes-list
+             (append
+              (mapcar (lambda (file) (cons file nil))
+                      (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
+              (mapcar (lambda (file) (cons file t))
+                      (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))))
+    (simplenote2--list-files files))
   (use-local-map simplenote2-browser-mode-map)
   (widget-setup))
 
