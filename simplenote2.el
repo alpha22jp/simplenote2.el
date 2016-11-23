@@ -46,6 +46,7 @@
 (require 'widget)
 (require 'wid-edit)
 (require 'request-deferred)
+(require 'simplenote2-list)
 
 (defcustom simplenote2-directory (expand-file-name "~/.simplenote2/")
   "Simplenote directory."
@@ -137,9 +138,10 @@ to edit them, set this option to `markdown-mode'."
   (float-time (nth 5 (file-attributes path))))
 
 (defun simplenote2--get-file-string (file)
-  (with-temp-buffer
-    (insert-file-contents file)
-    (buffer-string)))
+  (when (file-exists-p file)
+      (with-temp-buffer
+        (insert-file-contents file)
+        (buffer-string))))
 
 (defun simplenote2--tag-existp (tag tag-list)
   "Return non-nil if there is a string named TAG in TAG-LIST"
@@ -756,10 +758,12 @@ are retrieved from the server forcefully."
 (defun simplenote2-browser-refresh ()
   "Refresh Simplenote browser screen"
   (interactive)
-  (save-excursion
-    (when (get-buffer "*Simplenote*")
-      (set-buffer "*Simplenote*")
-      (simplenote2--menu-setup))))
+  (let ((buffer (get-buffer "*Simplenote*")))
+    (when buffer
+      (with-current-buffer buffer (simplenote2--menu-setup))))
+  (let ((buffer (get-buffer simplenote2-list-buffer-name)))
+    (when buffer
+      (with-current-buffer buffer (simplenote2-list-refresh)))))
 
 (defun simplenote2--toggle-filter-condition ()
 (setq simplenote2-filter-note-by-and-condition
@@ -1063,14 +1067,17 @@ ARG is specified, this function resets the filter already set."
     (widget-setup)))
 
 (defun simplenote2--mark-note-for-deletion (key)
-  (rename-file (simplenote2--filename-for-note key)
-               (simplenote2--filename-for-note-marked-deleted key)))
+  (when (file-exists-p (simplenote2--filename-for-note key))
+    (rename-file (simplenote2--filename-for-note key)
+                 (simplenote2--filename-for-note-marked-deleted key))))
 
 (defun simplenote2--unmark-note-for-deletion (key)
-  (rename-file (simplenote2--filename-for-note-marked-deleted key)
-               (simplenote2--filename-for-note key)))
+  (when (file-exists-p (simplenote2--filename-for-note-marked-deleted key))
+    (rename-file (simplenote2--filename-for-note-marked-deleted key)
+                 (simplenote2--filename-for-note key))))
 
 (defun simplenote2--create-note-locally ()
+  (interactive)
   (let (new-filename counter)
     (setq counter 0)
     (setq new-filename (concat (simplenote2--new-notes-dir) (format "note-%d" counter)))
