@@ -119,7 +119,6 @@ to edit them, set this option to `markdown-mode'."
 (defvar simplenote2--token nil)
 
 (defvar simplenote2-notes-info (make-hash-table :test 'equal))
-(defvar simplenote2-new-notes-info (make-hash-table :test 'equal))
 
 (defvar simplenote2-tag-list nil)
 
@@ -174,8 +173,17 @@ to edit them, set this option to `markdown-mode'."
 
 (defun simplenote2--get-note-info (key)
   "Get note info for the note specified by KEY."
-  (gethash key (if (simplenote2--is-note-new key)
-                   simplenote2-new-notes-info simplenote2-notes-info)))
+  (gethash key simplenote2-notes-info))
+
+(defun simplenote2--delete-note-info (key)
+  "Delete note info for the note specified by KEY."
+  (remhash key simplenote2-notes-info))
+
+(defun simplenote2--delete-note-locally (file)
+  "Delete file, buffer and associated note info specified by FILE."
+  (simplenote2--delete-note-info (file-name-nondirectory file))
+  (let ((buf (get-file-buffer file))) (when buf (kill-buffer buf)))
+  (delete-file file))
 
 
 ;;; Save/Load notes information file
@@ -213,7 +221,6 @@ to edit them, set this option to `markdown-mode'."
         (erase-buffer)
         (insert (format simplenote2--save-file-header (current-time-string)))
         (simplenote2--dump-variable 'simplenote2-notes-info)
-        (simplenote2--dump-variable 'simplenote2-new-notes-info)
         (simplenote2--dump-variable 'simplenote2-tag-list)
         (simplenote2--dump-variable 'simplenote2-notes-info-version)
         (write-file (simplenote2--filename-for-notes-info))
@@ -382,8 +389,7 @@ server is concatenated to the index provided by INDEX."
   "Request server to update or create note with local data"
   (lexical-let* ((file file)
                  (key (file-name-nondirectory file))
-                 (note-info (or (gethash key simplenote2-notes-info)
-                                (gethash key simplenote2-new-notes-info))))
+                 (note-info (simplenote2--get-note-info key)))
     (unless (string= (simplenote2--notes-dir) (file-name-directory file))
       (setq key nil))
     (deferred:nextc
@@ -491,7 +497,7 @@ and can be handled from the browser screen."
               (message "Failed to create note")
             (message "Created note %s" key)
             (when (string= (simplenote2--new-notes-dir) (file-name-directory file))
-              (remhash (file-name-nondirectory file) simplenote2-new-notes-info))
+              (simplenote2--delete-note-info (file-name-nondirectory file)))
             (let ((new-file (simplenote2--filename-for-note key)))
               (rename-file file new-file t)
               (rename-buffer new-file)
@@ -588,8 +594,7 @@ setting."
     ;; Don't switch mode when set via file cookie
     (when (eq major-mode (default-value 'major-mode))
       (let* ((key (file-name-nondirectory file))
-             (note-info (or (gethash key simplenote2-notes-info)
-                            (gethash key simplenote2-new-notes-info))))
+             (note-info (simplenote2--get-note-info key)))
         (funcall (if (nth 5 note-info)
                      simplenote2-markdown-notes-mode
                    simplenote2-notes-mode))))
@@ -642,10 +647,7 @@ are retrieved from the server forcefully."
                        (simplenote2--mark-note-as-deleted-deferred key)
                        (lambda (ret) (when ret
                                        (message "Deleted on local: %s" key)
-                                       (remhash key simplenote2-notes-info)
-                                       (let ((buf (get-file-buffer file)))
-                                         (when buf (kill-buffer buf)))
-                                       (delete-file file))))))
+                                       (simplenote2--delete-note-locally file))))))
                  (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))
          ;; Step1-2: Push notes locally created
          (mapcar (lambda (file)
@@ -654,11 +656,7 @@ are retrieved from the server forcefully."
                        (simplenote2--update-note-deferred file)
                        (lambda (key) (when key
                                        (message "Created on local: %s" key)
-                                       (let ((buf (get-file-buffer file)))
-                                         (when buf (kill-buffer buf)))
-                                       (remhash (file-name-nondirectory file)
-                                                simplenote2-new-notes-info)
-                                       (delete-file file))))))
+                                       (simplenote2--delete-note-locally file))))))
                  (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$"))
          ;; Step1-3: Push notes locally modified
          (let (files-to-push)
@@ -697,10 +695,7 @@ are retrieved from the server forcefully."
                     (let ((key (file-name-nondirectory file)))
                       (unless (member key keys-in-index)
                         (message "Deleted on server: %s" key)
-                        (remhash key simplenote2-notes-info)
-                        (let ((buf (get-file-buffer file)))
-                          (when buf (kill-buffer buf)))
-                        (delete-file file)))))
+                        (simplenote2--delete-note-locally file)))))
                 ;; Step2-3: Update notes on local which are older than that on server.
                 (let (keys-to-update)
                   (if (not arg)
@@ -906,8 +901,7 @@ ARG is specified, this function resets the filter already set."
   (interactive "p")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
-         (note-info (or (gethash key simplenote2-notes-info)
-                        (gethash key simplenote2-new-notes-info)))
+         (note-info (simplenote2--get-note-info key))
          tag)
     (if (not note-info)
         (message "This buffer is not a Simplenote note")
@@ -926,8 +920,7 @@ ARG is specified, this function resets the filter already set."
   (interactive)
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
-         (note-info (or (gethash key simplenote2-notes-info)
-                        (gethash key simplenote2-new-notes-info)))
+         (note-info (simplenote2--get-note-info key))
          tag)
     (if (not note-info)
         (message "This buffer is not a Simplenote note")
@@ -942,8 +935,7 @@ ARG is specified, this function resets the filter already set."
   (interactive "P")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
-         (note-info (or (gethash key simplenote2-notes-info)
-                        (gethash key simplenote2-new-notes-info))))
+         (note-info (simplenote2--get-note-info key)))
     (if (not note-info)
         (message "This buffer is not a Simplenote note")
       (unless (eq (not arg) (nth 5 note-info))
@@ -960,8 +952,7 @@ ARG is specified, this function resets the filter already set."
   (interactive "P")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
-         (note-info (or (gethash key simplenote2-notes-info)
-                        (gethash key simplenote2-new-notes-info))))
+         (note-info (simplenote2--get-note-info key)))
     (if (not note-info)
         (message "This buffer is not a Simplenote note")
       (unless (eq (not arg) (nth 6 note-info))
@@ -984,7 +975,7 @@ ARG is specified, this function resets the filter already set."
   (let* ((modify (nth 5 (file-attributes file)))
          (modify-string (format-time-string "%Y-%m-%d %H:%M:%S" modify))
          (note (simplenote2--get-file-string file))
-         (note-info (gethash (file-name-nondirectory file) simplenote2-new-notes-info))
+         (note-info (simplenote2--get-note-info (file-name-nondirectory file)))
          (headline (concat (if (nth 6 note-info) "*" "")
                            (simplenote2--note-headline note)))
          (shorttext (or (simplenote2--note-headrest note) "[Empty]")))
@@ -1005,11 +996,7 @@ ARG is specified, this function resets the filter already set."
                    :help-echo "Permanently remove this file"
                    :notify (lambda (widget &rest ignore)
                              (let ((file (widget-get widget :tag)))
-                               (delete-file file)
-                               (remhash (file-name-nondirectory file)
-                                        simplenote2-new-notes-info)
-                               (let ((buf (get-file-buffer file)))
-                                 (when buf (kill-buffer buf)))
+                               (simplenote2--delete-note-locally file)
                                (simplenote2-browser-refresh)))
                    "Remove")
     (widget-insert "\t")
@@ -1092,10 +1079,10 @@ ARG is specified, this function resets the filter already set."
       (setq counter (1+ counter))
       (setq new-filename (concat (simplenote2--new-notes-dir) (format "note-%d" counter))))
     (write-region "New note" nil new-filename nil)
-    ;; Save note information to 'simplenote2-new-notes-info
+    ;; Save note information to 'simplenote2-notes-info
     (let ((date (simplenote2--file-mtime new-filename)))
       (puthash (file-name-nondirectory new-filename)
-               (list 0 0 date date nil nil nil nil) simplenote2-new-notes-info))
+               (list 0 0 date date nil nil nil nil) simplenote2-notes-info))
     (simplenote2-browser-refresh)
     (simplenote2--open-note new-filename t)))
 

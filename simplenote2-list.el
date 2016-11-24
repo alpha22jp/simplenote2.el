@@ -67,13 +67,13 @@
           (tabulated-list-put-tag "D"))
         (forward-line))))
 
-(defun simplenote2-list-get-entry (key note-info &optional new-note)
+(defun simplenote2-list-get-entry (key note-info)
   "Get list entry for note specified by KEY and NOTE-INFO.
 NEW-NOTE indicates whether the note is new note."
-  (let* ((file (if new-note (simplenote2--filename-for-newnote key)
-                 (if (simplenote2--is-note-trashed key)
-                     (simplenote2--filename-for-note-marked-deleted key)
-                   (simplenote2--filename-for-note key))))
+  (let* ((file (cond ((simplenote2--is-note-new key) (simplenote2--filename-for-newnote key))
+                     ((simplenote2--is-note-trashed key)
+                      (simplenote2--filename-for-note-marked-deleted key))
+                     (t (simplenote2--filename-for-note key))))
          (date (simplenote2--file-mtime file))
          (note (simplenote2--get-file-string file))
          (header (concat (and (nth 6 note-info) "* ")
@@ -96,19 +96,17 @@ NEW-NOTE indicates whether the note is new note."
 (defun simplenote2-list-refresh-entries ()
   "Refresh simplenote list entries."
   (setq tabulated-list-entries
-        (append (cl-loop for key being the hash-keys of simplenote2-new-notes-info
+        (cl-loop for key being the hash-keys of simplenote2-notes-info
                          using (hash-values note-info)
-                         collect (simplenote2-list-get-entry key note-info t))
-                (cl-loop for key being the hash-keys of simplenote2-notes-info
-                         using (hash-values note-info)
-                         collect (simplenote2-list-get-entry key note-info)))))
+                         collect (simplenote2-list-get-entry key note-info))))
 
 (defun simplenote2-list-order-predicate (a b)
   "Predicate function to determine the order between A and B."
-  (let ((note-info-a (simplenote2--get-note-info (car a)))
-        (note-info-b (simplenote2--get-note-info (car b))))
-    (cond ((= (nth 0 note-info-a) 0) t) ;; new note should be on the top
-          ((= (nth 0 note-info-b) 0) nil)
+  (let* ((key-a (car a)) (key-b (car b))
+         (note-info-a (simplenote2--get-note-info key-a))
+         (note-info-b (simplenote2--get-note-info key-b)))
+    (cond ((simplenote2--is-note-new key-a) t) ;; new note should be on the top
+          ((simplenote2--is-note-new key-b) nil)
           ((nth 6 note-info-a) t) ;; pinned note should be on the top
           ((nth 6 note-info-b) nil)
           (t (> (nth 3 note-info-a) (nth 3 note-info-b))))))
@@ -127,11 +125,10 @@ NEW-NOTE indicates whether the note is new note."
   (interactive)
   (let* ((key (tabulated-list-get-id))
          (note-info (simplenote2--get-note-info key)))
-    (if (= (nth 0 note-info) 0)
-        (when (yes-or-no-p "This note hasn't been synced to the server.\
-Do you delete it immediately?")
-          (delete-file (simplenote2--filename-for-newnote key))
-          (remhash key simplenote2-new-notes-info)
+    (if (simplenote2--is-note-new key)
+        (when (yes-or-no-p
+               "This note hasn't been synced to server. Do you delete it immediately?")
+          (simplenote2--delete-note-locally (simplenote2--filename-for-newnote key))
           (simplenote2-list-refresh))
       (simplenote2--mark-note-for-deletion (tabulated-list-get-id))
       (tabulated-list-put-tag "D" t))))
