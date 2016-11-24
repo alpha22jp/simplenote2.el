@@ -1,9 +1,9 @@
-;;; simplenote2-list.el ---                       -*- lexical-binding: t; -*-
+;;; simplenote2-list.el --- Simplenote browser based on tabulated list
 
 ;; Copyright (C) 2016  alpha22jp
 
 ;; Author: alpha22jp <alpha22jp@gmail.com>
-;; Keywords: 
+;; Keywords: simplenote tabulated
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -20,60 +20,121 @@
 
 ;;; Commentary:
 
-;; 
+;; This is a new browser UI for simplenote2 based on tabulated-list-mode.
 
 ;;; Code:
 (require 'cl-lib)
 
 (defconst simplenote2-list-buffer-name "*Simplenote List*")
 
+(defcustom simplenote2-list-format
+  '((header "Header" 16 nil identity)
+    (modified "Modified" 16 simplenote2-list-order-predicate
+              (lambda (date) (format-time-string "%Y/%m/%d %H:%M" date)))
+    (tags "Tags" 10 nil
+          (lambda (tags)
+            (mapconcat (lambda (tag) (format "[%s]" tag)) tags " ")))
+    (description "Description" 0 nil identity))
+  "Format for Simplenote list."
+  :type '(alist :key-type
+          (choice
+           (const :tag "Id" id)
+           (const :tag "Header" header)
+           (const :tag "Modified date" modified)
+           (const :tag "Description" description)
+           (const :tag "Tags" tags))
+          :value-type
+          (list
+           (string :tag "Label")
+           (integer :tag "Field length")
+           (boolean :tag "Sortable")
+           (choice
+            (string :tag "Format")
+            (function :tag "Formatter"))))
+  :group 'simplenote2)
+
+(defcustom simplenote2-list-sort-key '("Modified" . nil)
+  "Sort key for Simplenote list."
+  :type '(cons string boolean)
+  :group 'simplenote2)
+
 (defun simplenote2-list-refresh-mark ()
   "Refresh all mark in simplenote list buffer."
   (save-excursion
       (goto-char (point-min))
       (while (not (eobp))
-        (when (file-exists-p (simplenote2--filename-for-note-marked-deleted
-                              (tabulated-list-get-id)))
+        (when (simplenote2--is-note-trashed (tabulated-list-get-id))
           (tabulated-list-put-tag "D"))
         (forward-line))))
 
-(defun simplenote2-list-get-entry (key note-info)
-  "Get list entry for note specified by KEY and NOTE-INFO."
-  (let ((note (or (simplenote2--get-file-string
-                   (simplenote2--filename-for-note key))
-                  (simplenote2--get-file-string
-                   (simplenote2--filename-for-note-marked-deleted key))))
-        (time (seconds-to-time (nth 3 note-info))))
-    (list key `[,(concat (and (nth 6 note-info) "* ")
-                         (simplenote2--note-headline note))
-                ,(format-time-string "%Y/%m/%d %H:%M" time)
-                ,(simplenote2--note-headrest note)])))
+(defun simplenote2-list-get-entry (key note-info &optional new-note)
+  "Get list entry for note specified by KEY and NOTE-INFO.
+NEW-NOTE indicates whether the note is new note."
+  (let* ((file (if new-note (simplenote2--filename-for-newnote key)
+                 (if (simplenote2--is-note-trashed key)
+                     (simplenote2--filename-for-note-marked-deleted key)
+                   (simplenote2--filename-for-note key))))
+         (date (simplenote2--file-mtime file))
+         (note (simplenote2--get-file-string file))
+         (header (concat (and (nth 6 note-info) "* ")
+                         (simplenote2--note-headline note)))
+         (desc (simplenote2--note-headrest note))
+         (tags (nth 4 note-info)))
+    (list key
+          (apply 'vector
+                 (cl-loop for (sym label width sort format) in simplenote2-list-format
+                          collect (let ((value (cond ((eq sym 'id) key)
+                                                     ((eq sym 'modified) date)
+                                                     ((eq sym 'header) header)
+                                                     ((eq sym 'description) desc)
+                                                     ((eq sym 'tags) tags))))
+                                    (funcall (if (stringp format)
+                                                 (lambda (val) (funcall 'format format val))
+                                               format)
+                                             value)))))))
 
 (defun simplenote2-list-refresh-entries ()
   "Refresh simplenote list entries."
   (setq tabulated-list-entries
-        (cl-loop for key being the hash-keys of simplenote2-notes-info
-           using (hash-values note-info)
-           collect (simplenote2-list-get-entry key note-info))))
+        (append (cl-loop for key being the hash-keys of simplenote2-new-notes-info
+                         using (hash-values note-info)
+                         collect (simplenote2-list-get-entry key note-info t))
+                (cl-loop for key being the hash-keys of simplenote2-notes-info
+                         using (hash-values note-info)
+                         collect (simplenote2-list-get-entry key note-info)))))
 
 (defun simplenote2-list-order-predicate (a b)
   "Predicate function to determine the order between A and B."
-  (cond ((nth 6 (gethash (car a) simplenote2-notes-info)) t)
-        ((nth 6 (gethash (car b)  simplenote2-notes-info)) nil)
-        (t (> (nth 3 (gethash (car a) simplenote2-notes-info))
-              (nth 3 (gethash (car b) simplenote2-notes-info))))))
+  (let ((note-info-a (simplenote2--get-note-info (car a)))
+        (note-info-b (simplenote2--get-note-info (car b))))
+    (cond ((= (nth 0 note-info-a) 0) t) ;; new note should be on the top
+          ((= (nth 0 note-info-b) 0) nil)
+          ((nth 6 note-info-a) t) ;; pinned note should be on the top
+          ((nth 6 note-info-b) nil)
+          (t (> (nth 3 note-info-a) (nth 3 note-info-b))))))
 
 (defun simplenote2-list-open-note ()
   "Open note at which the current line points."
   (interactive)
-  (simplenote2--open-note
-   (simplenote2--filename-for-note (tabulated-list-get-id))))
+  (let ((key (tabulated-list-get-id)))
+    (simplenote2--open-note
+     (if (simplenote2--is-note-new key)
+         (simplenote2--filename-for-newnote key)
+       (simplenote2--filename-for-note key)))))
 
 (defun simplenote2-list-mark-for-deletion ()
   "Mark note for deletion at which the current line points."
   (interactive)
-  (simplenote2--mark-note-for-deletion (tabulated-list-get-id))
-  (tabulated-list-put-tag "D" t))
+  (let* ((key (tabulated-list-get-id))
+         (note-info (simplenote2--get-note-info key)))
+    (if (= (nth 0 note-info) 0)
+        (when (yes-or-no-p "This note hasn't been synced to the server.\
+Do you delete it immediately?")
+          (delete-file (simplenote2--filename-for-newnote key))
+          (remhash key simplenote2-new-notes-info)
+          (simplenote2-list-refresh))
+      (simplenote2--mark-note-for-deletion (tabulated-list-get-id))
+      (tabulated-list-put-tag "D" t))))
 
 (defun simplenote2-list-unmark-for-deletion ()
   "Unmark note for deletion at which the current line points."
@@ -95,11 +156,11 @@
 (define-derived-mode simplenote2-list-mode tabulated-list-mode "Simplenote List"
   "Major mode for Simplenote List"
   (setq tabulated-list-format
-        `[("Header" 20 nil)
-          ("Modified date" 16 simplenote2-list-order-predicate)
-          ("Description" 40 nil)])
+        (apply 'vector
+               (cl-loop for (sym label width sort format) in simplenote2-list-format
+                        collect (list label width sort))))
   (setq tabulated-list-padding 2)
-  (setq tabulated-list-sort-key (cons "Modified date" nil))
+  (setq tabulated-list-sort-key simplenote2-list-sort-key)
   (tabulated-list-init-header))
 
 (defun simplenote2-list-refresh ()

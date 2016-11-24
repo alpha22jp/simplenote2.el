@@ -164,6 +164,19 @@ to edit them, set this option to `markdown-mode'."
             (push tag tag-list)))))
     (setq simplenote2-tag-list tag-list)))
 
+(defun simplenote2--is-note-new (key)
+  "Return whether note specified by KEY is new note."
+  (string-match-p "^note-[0-9]+" key))
+
+(defun simplenote2--is-note-trashed (key)
+  "Return whether note specified by KEY is in trash directory."
+  (file-exists-p (simplenote2--filename-for-note-marked-deleted key)))
+
+(defun simplenote2--get-note-info (key)
+  "Get note info for the note specified by KEY."
+  (gethash key (if (simplenote2--is-note-new key)
+                   simplenote2-new-notes-info simplenote2-notes-info)))
+
 
 ;;; Save/Load notes information file
 
@@ -543,6 +556,9 @@ Otherwise, the local modification is discarded."
 
 (defun simplenote2--filename-for-note (key)
   (concat (simplenote2--notes-dir) key))
+
+(defun simplenote2--filename-for-newnote (key)
+  (concat (simplenote2--new-notes-dir) key))
 
 (defun simplenote2--filename-for-note-marked-deleted (key)
   (concat (simplenote2--trash-dir) key))
@@ -1077,9 +1093,9 @@ ARG is specified, this function resets the filter already set."
       (setq new-filename (concat (simplenote2--new-notes-dir) (format "note-%d" counter))))
     (write-region "New note" nil new-filename nil)
     ;; Save note information to 'simplenote2-new-notes-info
-    (puthash (file-name-nondirectory new-filename)
-             (list 0 0 0 0 nil nil nil nil)
-             simplenote2-new-notes-info)
+    (let ((date (simplenote2--file-mtime new-filename)))
+      (puthash (file-name-nondirectory new-filename)
+               (list 0 0 date date nil nil nil nil) simplenote2-new-notes-info))
     (simplenote2-browser-refresh)
     (simplenote2--open-note new-filename t)))
 
