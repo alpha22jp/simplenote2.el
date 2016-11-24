@@ -123,6 +123,8 @@ to edit them, set this option to `markdown-mode'."
 (defvar simplenote2-tag-list nil)
 
 (defvar simplenote2-filtered-notes-list nil)
+(defvar simplenote2-filtered-new-notes-list nil)
+(defvar simplenote2-filtered-trash-notes-list nil)
 
 (defconst simplenote2-notes-info-version 1)
 
@@ -805,23 +807,30 @@ are retrieved from the server forcefully."
                         (consp tag-filtered))))
             (simplenote2--other-note-widget file)))))))
 
+(defun simplenote2--get-filtered-file-list (dir regexp)
+  "Get file list on directory DIR filtered by REGEXP."
+  (if (or (null regexp) (string= "" regexp)) nil
+    (or (split-string
+         (shell-command-to-string
+          (concat "grep -il " dir "*" " -e " (shell-quote-argument regexp)
+                  " 2>/dev/null")) "\n" t "\s")
+        ;; Set dummy list to distinguish from no-filter state.
+        '("no-match"))))
+
+(defun simplenote2--filter-note-list (regexp)
+  "Filter note list on browser screen by REGEXP."
+  (setq simplenote2-filtered-notes-list
+        (simplenote2--get-filtered-file-list (simplenote2--notes-dir) regexp))
+  (setq simplenote2-filtered-new-notes-list
+        (simplenote2--get-filtered-file-list (simplenote2--new-notes-dir) regexp))
+  (setq simplenote2-filtered-trash-notes-list
+        (simplenote2--get-filtered-file-list (simplenote2--trash-dir) regexp))
+  (simplenote2-browser-refresh))
+
 ;; Eventually this will do the work of applying the regex and whatnot
 (setq simplenote2--search-field
       (lambda (widget &rest ignore)
-        ;; TODO refactor this
-        (let* ((regexp (widget-value widget)))
-          (if (or (null regexp) (string= "" regexp))
-              (setq simplenote2-filtered-notes-list nil)
-            (setq simplenote2-filtered-notes-list
-                  (split-string
-                   (shell-command-to-string
-                    (concat "grep -il " (simplenote2--notes-dir) "/*" " -e "
-                            (shell-quote-argument regexp))) "\n" t "\s"))))
-        (when simplenote2-filtered-notes-list
-          (setq simplenote2-filtered-notes-list
-                (mapcar (lambda (file) (cons file nil)) simplenote2-filtered-notes-list)))
-        (simplenote2-browser-refresh)))
-
+        (simplenote2--filter-note-list (widget-value widget))))
 
 (defun simplenote2--menu-setup ()
   (kill-all-local-variables)
@@ -869,22 +878,23 @@ are retrieved from the server forcefully."
   (widget-create 'push-button
                  :tag "Clear search"
                  :action (lambda (widget &optional _event)
-                           (setq simplenote2-filtered-notes-list nil)
+                           (simplenote2--filter-note-list nil)
                            (simplenote2-browser-refresh)))
   (widget-insert "\n\n")
   ;; New notes list
-  (let ((new-notes (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$")))
+  (let ((new-notes (or simplenote2-filtered-new-notes-list
+                       (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$"))))
     (when new-notes
       (widget-insert "== NEW NOTES\n\n")
       (mapc 'simplenote2--new-note-widget new-notes)))
   ;; Other notes list
-  (let ((files
-         (or simplenote2-filtered-notes-list
-             (append
-              (mapcar (lambda (file) (cons file nil))
-                      (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
-              (mapcar (lambda (file) (cons file t))
-                      (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))))
+  (let ((files (append
+                (mapcar (lambda (file) (cons file nil))
+                        (or simplenote2-filtered-notes-list
+                            (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$")))
+                (mapcar (lambda (file) (cons file t))
+                        (or simplenote2-filtered-trash-notes-list
+                            (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))))
     (simplenote2--list-files files))
   (use-local-map simplenote2-browser-mode-map)
   (widget-setup))
