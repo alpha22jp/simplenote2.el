@@ -97,8 +97,17 @@ NEW-NOTE indicates whether the note is new note."
   "Refresh simplenote list entries."
   (setq tabulated-list-entries
         (cl-loop for key being the hash-keys of simplenote2-notes-info
-                         using (hash-values note-info)
-                         collect (simplenote2-list-get-entry key note-info))))
+                 using (hash-values note-info)
+                 when (or (and (null simplenote2-filtered-notes-list)
+                               (null simplenote2-filtered-new-notes-list)
+                               (null simplenote2-filtered-trash-notes-list))
+                          (member (simplenote2--filename-for-note key)
+                                  simplenote2-filtered-notes-list)
+                          (member (simplenote2--filename-for-newnote key)
+                                  simplenote2-filtered-new-notes-list)
+                          (member (simplenote2--filename-for-note-marked-deleted key)
+                                  simplenote2-filtered-trash-notes-list))
+                 collect (simplenote2-list-get-entry key note-info))))
 
 (defun simplenote2-list-order-predicate (a b)
   "Predicate function to determine the order between A and B."
@@ -139,6 +148,12 @@ NEW-NOTE indicates whether the note is new note."
   (simplenote2--unmark-note-for-deletion (tabulated-list-get-id))
   (tabulated-list-put-tag " " t))
 
+(defun simplenote2-list-filter-notes ()
+  "Filter notes on Simplenote list screen by regexp input."
+  (interactive)
+  (let ((regexp (read-string "Input regexp: ")))
+    (simplenote2--filter-note-list regexp)))
+
 (defvar simplenote2-list-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map tabulated-list-mode-map)
@@ -147,6 +162,7 @@ NEW-NOTE indicates whether the note is new note."
     (define-key map "g" 'simplenote2-sync-notes)
     (define-key map "d" 'simplenote2-list-mark-for-deletion)
     (define-key map "u" 'simplenote2-list-unmark-for-deletion)
+    (define-key map "/" 'simplenote2-list-filter-notes)
     map)
   "Local keymap for `simplenote2-list-mode' buffers.")
 
