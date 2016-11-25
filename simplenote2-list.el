@@ -78,7 +78,7 @@ NEW-NOTE indicates whether the note is new note."
          (note (simplenote2--get-file-string file))
          (header (concat (and (nth 6 note-info) "* ")
                          (simplenote2--note-headline note)))
-         (desc (simplenote2--note-headrest note))
+         (desc (concat (simplenote2--note-headrest note)))
          (tags (nth 4 note-info)))
     (list key
           (apply 'vector
