@@ -28,7 +28,7 @@
 ;;; Commentary:
 
 ;; This is a new version of simplenote.el which assists the interaction with
-;; Simplenote (http://app.simplenote.com/). The major improvement points from
+;; Simplenote (http://app.simplenote.com/).  The major improvement points from
 ;; the original version are
 ;;
 ;; * Use of Simplenote API ver.2 to interact with server which can provide the
@@ -135,30 +135,47 @@ to edit them, set this option to `markdown-mode'."
 
 ;;; Unitity functions
 
-(defun simplenote2--file-mtime (path)
-  (float-time (nth 5 (file-attributes path))))
+(defun simplenote2--file-mtime (file)
+  "Return modified time of file specified by FILE."
+  (float-time (nth 5 (file-attributes file))))
 
 (defun simplenote2--get-file-string (file)
+  "Return content of file FILE as string."
   (when (file-exists-p file)
       (with-temp-buffer
         (insert-file-contents file)
         (buffer-string))))
 
 (defun simplenote2--tag-existp (tag tag-list)
-  "Return non-nil if there is a string named TAG in TAG-LIST"
+  "Return non-nil if there is a string named TAG in TAG-LIST."
   (if (arrayp tag-list)
       (loop for i from 0 below (length tag-list)
             thereis (string= tag (aref tag-list i)))
     (member tag tag-list)))
 
 (defun simplenote2--notes-dir ()
+  "Return note directory path."
   (file-name-as-directory (concat (file-name-as-directory simplenote2-directory) "notes")))
 
 (defun simplenote2--trash-dir ()
+  "Return trash directory path."
   (file-name-as-directory (concat (file-name-as-directory simplenote2-directory) "trash")))
 
 (defun simplenote2--new-notes-dir ()
+  "Return new note directory path."
   (file-name-as-directory (concat (file-name-as-directory simplenote2-directory) "new")))
+
+(defun simplenote2--filename-for-note (key)
+  "Return file name for note specified by KEY."
+  (concat (simplenote2--notes-dir) key))
+
+(defun simplenote2--filename-for-newnote (key)
+  "Return file name for new note specified by KEY."
+  (concat (simplenote2--new-notes-dir) key))
+
+(defun simplenote2--filename-for-note-marked-deleted (key)
+  "Return file name for trashed note specified by KEY."
+  (concat (simplenote2--trash-dir) key))
 
 (defun simplenote2--get-note-files ()
   "Return list of files in note directory."
@@ -224,6 +241,8 @@ to edit them, set this option to `markdown-mode'."
     (nreverse nl)))
 
 (defun simplenote2--dump-variable (variable &optional limit)
+  "Dump variable VARIABLE as setq format to the current buffer.
+LIMIT specifies the limit of variables to dump."
   (let ((value (symbol-value variable)))
     (if (atom value)
         (insert (format "\n(setq %S '%S)\n" variable value))
@@ -235,9 +254,11 @@ to edit them, set this option to `markdown-mode'."
       (insert "\n        ))\n"))))
 
 (defun simplenote2--filename-for-notes-info ()
+  "Return file name for notes info database."
   (concat (file-name-as-directory simplenote2-directory) ".notes-info.el"))
 
 (defun simplenote2-save-notes-info ()
+  "Save notes info into the database."
   (condition-case error
       (with-temp-buffer
         (erase-buffer)
@@ -250,11 +271,12 @@ to edit them, set this option to `markdown-mode'."
     (error (warn "Simplenote2: %s" (error-message-string error)))))
 
 (defun simplenote2-load-notes-info ()
+  "Load notes info from the database."
   (when (file-readable-p (simplenote2--filename-for-notes-info))
     (load-file (simplenote2--filename-for-notes-info))))
 
 (defun simplenote2--save-note (note)
-  "Save note information and content gotten from server."
+  "Save info and content gotten from server for note specified by NOTE."
   (let ((key (cdr (assq 'key note)))
         (systemtags (cdr (assq 'systemtags note)))
         (createdate (string-to-number (cdr (assq 'createdate note))))
@@ -284,19 +306,27 @@ to edit them, set this option to `markdown-mode'."
 ;;; Simplenote authentication
 
 (defun simplenote2--email ()
+  "Return e-mail address for Simplenote.
+
+This function returns `simplenote2-email' if it's non-nil, otherwise
+ask e-mail to users interactively."
   (when (not simplenote2-email)
     (setq simplenote2-email (read-string "Simplenote email: "))
     (setq simplenote2--email-was-read-interactively t))
   simplenote2-email)
 
 (defun simplenote2--password ()
+  "Return password for Simplenote.
+
+This function returns `simplenote2-password' if it's non-nil, otherwise
+ask e-mail to users interactively."
   (when (not simplenote2-password)
     (setq simplenote2-password (read-passwd "Simplenote password: "))
     (setq simplenote2--password-was-read-interactively t))
   simplenote2-password)
 
 (defun simplenote2--get-token-deferred ()
-  "Return simplenote token wrapped with deferred object
+  "Return simplenote token wrapped with deferred object.
 
 This function returns cached token if it has been already gotten,
 otherwise gets token from server using `simplenote2-email' and
@@ -329,15 +359,16 @@ otherwise gets token from server using `simplenote2-email' and
 ;;; API calls for index and notes
 
 (defun simplenote2--get-index-deferred (&optional index mark)
-  "Get note index from server and return it wrapped with deferred
+  "Get note index from server and return it wrapped with deferred object.
+
+This function is intended to be called recursively, specifying the index
+gotten so far as INDEX.  When MARK is non-nil, it's added to the parameter
+for requesting index, and index gotten from server is concatenated to the
+index provided by INDEX.
 
 Index returned is a list whose element consists of (KEY . SYNCNUM), where
 KEY is a string for note key and SYNCNUM is a number which means the times
-of syncing note. Notes marked as deleted are not included in the list.
-
-This function is intended to be called recursively. When MARK is non-nil,
-it's added to the parameter for requesting index, and index gotten from
-server is concatenated to the index provided by INDEX."
+of syncing note.  Notes marked as deleted are not included in the list."
   (lexical-let ((index index)
                 (mark mark))
     (deferred:nextc
@@ -369,7 +400,7 @@ server is concatenated to the index provided by INDEX."
                   index)))))))))
 
 (defun simplenote2--get-note-deferred (key)
-  "Get note information for KEY including content from server"
+  "Get note information for KEY including content from server."
   (lexical-let ((key key))
     (deferred:nextc
       (simplenote2--get-token-deferred)
@@ -388,7 +419,7 @@ server is concatenated to the index provided by INDEX."
                 (simplenote2--save-note (request-response-data res))))))))))
 
 (defun simplenote2--mark-note-as-deleted-deferred (key)
-  "Request server to mark note for KEY as deleted"
+  "Request server to mark note for KEY as deleted."
   (lexical-let ((key key))
     (deferred:nextc
       (simplenote2--get-token-deferred)
@@ -408,7 +439,7 @@ server is concatenated to the index provided by INDEX."
                 (request-response-data res)))))))))
 
 (defun simplenote2--update-note-deferred (file)
-  "Request server to update or create note with local data"
+  "Request server to update or create note with file specified by FILE."
   (lexical-let* ((file file)
                  (key (file-name-nondirectory file))
                  (note-info (simplenote2--get-note-info key)))
@@ -462,7 +493,7 @@ server is concatenated to the index provided by INDEX."
 ;;; Push and pull buffer as note
 
 (defun simplenote2-push-buffer ()
-  "Push changes to server which are added to the note currently visiting
+  "Push change to server which are added to the note currently visiting.
 
 This function works depending on where the current buffer file is located.
 1) If the file is on new note directory, it does just the same process as
@@ -499,10 +530,10 @@ This function works depending on where the current buffer file is located.
 
 ;;;###autoload
 (defun simplenote2-create-note-from-buffer ()
-  "Create a new note from the buffer currently visiting
+  "Create a new note from the buffer currently visiting.
 
-This function requests server to create a new note. The buffer currently
-visiting is used as the content of the note. When the note is created
+This function requests server to create a new note.  The buffer currently
+visiting is used as the content of the note.  When the note is created
 successfully, the current buffer file is moved to `simplenote2-directory'
 and can be handled from the browser screen."
   (interactive)
@@ -528,10 +559,10 @@ and can be handled from the browser screen."
             (simplenote2-browser-refresh)))))))
 
 (defun simplenote2-pull-buffer ()
-  "Pull the latest status of note currently visiting from the server
+  "Pull the latest status of note currently visiting from the server.
 
 This function retrieves the latest status of note including content from the
-server, and overwrite local data with them. In the case the note is modified
+server, and overwrite local data with them.  In the case the note is modified
 locally, you'll be asked if you push the modification to the server first.
 If you answer yes, this function does the same as `simplenote2-push-buffer'.
 Otherwise, the local modification is discarded."
@@ -561,6 +592,7 @@ Otherwise, the local modification is discarded."
 
 ;;;###autoload
 (defun simplenote2-setup ()
+  "Load note database and create directories if needed."
   (interactive)
   (simplenote2-load-notes-info)
   (add-hook 'kill-emacs-hook 'simplenote2-save-notes-info)
@@ -573,24 +605,15 @@ Otherwise, the local modification is discarded."
   (when (not (file-exists-p (simplenote2--new-notes-dir)))
     (make-directory (simplenote2--new-notes-dir) t)))
 
-(defun simplenote2--filename-for-note (key)
-  (concat (simplenote2--notes-dir) key))
-
-(defun simplenote2--filename-for-newnote (key)
-  (concat (simplenote2--new-notes-dir) key))
-
-(defun simplenote2--filename-for-note-marked-deleted (key)
-  (concat (simplenote2--trash-dir) key))
-
 (defun simplenote2--note-headline (text)
-  "The first non-empty line of a note."
+  "Return the first non-empty line of the string specified by TEXT."
   (let ((begin (string-match "^.+$" text)))
     (when begin
       (substring text begin (min (match-end 0)
                                  (+ begin simplenote2-note-head-size))))))
 
 (defun simplenote2--note-headrest (text)
-  "Text after the first non-empty line of a note, to fill in the list display."
+  "Text after the first non-empty line of the string specified by TEXT."
   (let* ((headline (simplenote2--note-headline text))
          (text (replace-regexp-in-string "\n" " " text))
          (begin (when headline (string-match (regexp-quote headline) text))))
@@ -598,11 +621,11 @@ Otherwise, the local modification is discarded."
       (truncate-string-to-width (substring text (match-end 0)) (- simplenote2-note-head-size (string-width headline))))))
 
 (defun simplenote2--open-note (file &optional create-flag)
-  "Opens FILE in a new buffer, setting its mode, and returns the buffer.
+  "Open FILE in a new buffer, setting its mode, and return the buffer.
 
-The major mode of the resulting buffer will be set to
-`simplenote2-notes-mode' but can be overridden by a file-local
-setting."
+CREATE-FLAG shows if the file is newly created.  The major mode of the
+ resulting buffer will be set to `simplenote2-notes-mode' but can be
+ overridden by a file-local setting."
   (prog1 (find-file-other-window file)
     ;; Don't switch mode when set via file cookie
     (when (eq major-mode (default-value 'major-mode))
@@ -625,10 +648,10 @@ setting."
 ;; Simplenote sync
 
 (defun simplenote2-sync-notes (&optional arg)
-  "Sync all notes between the server and the local data
+  "Sync all notes between the server and the local data.
 
-This function syncs all notes between the server and the local data. The steps
-of the process are as below.
+This function syncs all notes between the server and the local data.
+The steps of the process are as below.
 
 1) Sync update made on local side.
   1. Delete notes locally marked as deleted.
@@ -769,7 +792,7 @@ are retrieved from the server forcefully."
 
 ;;;###autoload
 (defun simplenote2-browse ()
-  "Show Simplenote browser screen"
+  "Show Simplenote browser screen."
   (interactive)
   (when (not (file-exists-p simplenote2-directory))
       (make-directory simplenote2-directory t))
@@ -778,7 +801,7 @@ are retrieved from the server forcefully."
   (goto-char 1))
 
 (defun simplenote2-browser-refresh ()
-  "Refresh Simplenote browser screen"
+  "Refresh Simplenote browser screen."
   (interactive)
   (let ((buffer (get-buffer "*Simplenote*")))
     (when buffer
@@ -788,10 +811,12 @@ are retrieved from the server forcefully."
       (with-current-buffer buffer (simplenote2-list-refresh)))))
 
 (defun simplenote2--toggle-filter-condition ()
-(setq simplenote2-filter-note-by-and-condition
-      (if simplenote2-filter-note-by-and-condition nil t)))
+  "Toggle filter condition between AND and OR."
+  (setq simplenote2-filter-note-by-and-condition
+        (if simplenote2-filter-note-by-and-condition nil t)))
 
 (defun simplenote2--list-files (passed-files)
+  "Display list of the notes specified by PASSED-FILES."
   ;; If we're not searching from the filter, we need all of the files. If we
   ;; are, then we need *only* those files from that match the pattern
   (let (files)
@@ -842,6 +867,7 @@ are retrieved from the server forcefully."
         (simplenote2--filter-note-list (widget-value widget))))
 
 (defun simplenote2--menu-setup ()
+  "Setup browser screen menu and content."
   (kill-all-local-variables)
   (let ((inhibit-read-only t))
     (erase-buffer))
@@ -906,11 +932,11 @@ are retrieved from the server forcefully."
   (widget-setup))
 
 (defun simplenote2-filter-note-by-tag (&optional arg)
-  "Filter the notes displayed on the browser by tags
+  "Filter the notes displayed on the browser by tags.
 
 This function sets the filter used for the browser screen interactively.
-You can specify one or more tags until you input just [enter]. If the prefix
-ARG is specified, this function resets the filter already set."
+You can specify one or more tags until you input just [enter].  If the
+prefix ARG is specified, this function resets the filter already set."
   (interactive "P")
   (setq simplenote2-filter-note-tag-list nil)
   (when (not arg)
@@ -922,7 +948,9 @@ ARG is specified, this function resets the filter already set."
   (simplenote2-browser-refresh))
 
 (defun simplenote2-add-tag (arg)
-  "Add a tag to the note currently visiting"
+  "Add a tag specified by ARG to the note currently visiting.
+
+If called interactively, ask a tag to users instead of using ARG."
   (interactive "p")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
@@ -941,7 +969,7 @@ ARG is specified, this function resets the filter already set."
         (message "Added tag: %s" tag)))))
 
 (defun simplenote2-delete-tag ()
-  "Delete a tag from the note currently visiting"
+  "Delete a tag from the note currently visiting."
   (interactive)
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
@@ -956,7 +984,9 @@ ARG is specified, this function resets the filter already set."
       (message "Deleted tag: %s" tag))))
 
 (defun simplenote2-set-markdown (&optional arg)
-  "Set/reset markdown flag to the note currently visiting"
+  "Set/reset markdown flag to the note currently visiting.
+
+Reset markdown flag if ARG is given."
   (interactive "P")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
@@ -973,7 +1003,9 @@ ARG is specified, this function resets the filter already set."
         (message "%s markdown flag" (if arg "Unset" "Set"))))))
 
 (defun simplenote2-set-pinned (&optional arg)
-  "Set/reset pinned flag to the note currently visiting"
+  "Set/reset pinned flag to the note currently visiting.
+
+Reset pinned flag if ARG is given."
   (interactive "P")
   (let* ((file (buffer-file-name))
          (key (file-name-nondirectory file))
@@ -987,16 +1019,19 @@ ARG is specified, this function resets the filter already set."
         (message "%s pinned flag" (if arg "Unset" "Set"))))))
 
 (defun simplenote2--file-newer-p (file1 file2)
+  "Return whether FILE1 is newer than FILE2."
   (let (time1 time2)
     (setq time1 (nth 5 (file-attributes file1)))
     (setq time2 (nth 5 (file-attributes file2)))
     (time-less-p time2 time1)))
 
 (defun simplenote2--pinned-note-p (file1 file2)
+  "Return whether FILE1 is pinned and FILE2 is not."
   (and (nth 6 (gethash (file-name-nondirectory file1) simplenote2-notes-info))
        (not (nth 6 (gethash (file-name-nondirectory file2) simplenote2-notes-info)))))
 
 (defun simplenote2--new-note-widget (file)
+  "Display new note widgets for note specified by FILE."
   (let* ((modify (nth 5 (file-attributes file)))
          (modify-string (format-time-string "%Y-%m-%d %H:%M:%S" modify))
          (note (simplenote2--get-file-string file))
@@ -1030,6 +1065,7 @@ ARG is specified, this function resets the filter already set."
     (widget-insert "\n\n")))
 
 (defun simplenote2--other-note-widget (pair)
+  "Display note widgets for note specified by PAIR."
   (let* ((file (car pair))
          (deleted (cdr pair))
          (key (file-name-nondirectory file))
@@ -1086,16 +1122,19 @@ ARG is specified, this function resets the filter already set."
     (widget-setup)))
 
 (defun simplenote2--mark-note-for-deletion (key)
+  "Mark note for deletion for note specified by KEY."
   (when (file-exists-p (simplenote2--filename-for-note key))
     (rename-file (simplenote2--filename-for-note key)
                  (simplenote2--filename-for-note-marked-deleted key))))
 
 (defun simplenote2--unmark-note-for-deletion (key)
+  "Unmark note for deletion for note specified by KEY."
   (when (file-exists-p (simplenote2--filename-for-note-marked-deleted key))
     (rename-file (simplenote2--filename-for-note-marked-deleted key)
                  (simplenote2--filename-for-note key))))
 
 (defun simplenote2--create-note-locally ()
+  "Create note locally, creating file on new note directory."
   (interactive)
   (let (new-filename counter)
     (setq counter 0)
