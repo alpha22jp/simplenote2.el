@@ -151,13 +151,33 @@ to edit them, set this option to `markdown-mode'."
             thereis (string= tag (aref tag-list i)))
     (member tag tag-list)))
 
+(defun simplenote2--notes-dir ()
+  (file-name-as-directory (concat (file-name-as-directory simplenote2-directory) "notes")))
+
+(defun simplenote2--trash-dir ()
+  (file-name-as-directory (concat (file-name-as-directory simplenote2-directory) "trash")))
+
+(defun simplenote2--new-notes-dir ()
+  (file-name-as-directory (concat (file-name-as-directory simplenote2-directory) "new")))
+
+(defun simplenote2--get-note-files ()
+  "Return list of files in note directory."
+  (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
+
+(defun simplenote2--get-trash-files ()
+  "Return list of files in trash directory."
+  (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))
+
+(defun simplenote2--get-new-note-files ()
+  "Return list of files in new note directory."
+  (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$"))
+
 (defun simplenote2--make-tag-list ()
-  (let ((files
-     (mapcar 'file-name-nondirectory
-         (append
-          (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$")
-          (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))
-    tag-list)
+  "Return list of tags currently used."
+  (let ((files (mapcar 'file-name-nondirectory
+                       (append (simplenote2--get-note-files)
+                               (simplenote2--get-trash-files))))
+        tag-list)
     (dolist (file files)
       (let ((note-info (gethash file simplenote2-notes-info)))
         (dolist (tag (nth 4 note-info))
@@ -539,15 +559,6 @@ Otherwise, the local modification is discarded."
 
 ;;; Browser helper functions
 
-(defun simplenote2--trash-dir ()
-  (file-name-as-directory (concat (file-name-as-directory simplenote2-directory) "trash")))
-
-(defun simplenote2--notes-dir ()
-  (file-name-as-directory (concat (file-name-as-directory simplenote2-directory) "notes")))
-
-(defun simplenote2--new-notes-dir ()
-  (file-name-as-directory (concat (file-name-as-directory simplenote2-directory) "new")))
-
 ;;;###autoload
 (defun simplenote2-setup ()
   (interactive)
@@ -650,7 +661,7 @@ are retrieved from the server forcefully."
                        (lambda (ret) (when ret
                                        (message "Deleted on local: %s" key)
                                        (simplenote2--delete-note-locally file))))))
-                 (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))
+                 (simplenote2--get-trash-files))
          ;; Step1-2: Push notes locally created
          (mapcar (lambda (file)
                    (lexical-let ((file file))
@@ -659,11 +670,10 @@ are retrieved from the server forcefully."
                        (lambda (key) (when key
                                        (message "Created on local: %s" key)
                                        (simplenote2--delete-note-locally file))))))
-                 (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$"))
+                 (simplenote2--get-new-note-files))
          ;; Step1-3: Push notes locally modified
          (let (files-to-push)
-           (dolist (file (directory-files
-                          (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
+           (dolist (file (simplenote2--get-note-files))
              (let ((note-info (gethash (file-name-nondirectory file)
                                        simplenote2-notes-info)))
                (when (and note-info
@@ -692,8 +702,7 @@ are retrieved from the server forcefully."
                 ;; Step2-2: Delete notes on local which are not included in the index.
                 (message "Getting index from server done")
                 (let ((keys-in-index (mapcar (lambda (e) (car e)) index)))
-                  (dolist (file (directory-files
-                                 (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
+                  (dolist (file (simplenote2--get-note-files))
                     (let ((key (file-name-nondirectory file)))
                       (unless (member key keys-in-index)
                         (message "Deleted on server: %s" key)
@@ -882,19 +891,16 @@ are retrieved from the server forcefully."
                            (simplenote2-browser-refresh)))
   (widget-insert "\n\n")
   ;; New notes list
-  (let ((new-notes (or simplenote2-filtered-new-notes-list
-                       (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$"))))
+  (let ((new-notes (or simplenote2-filtered-new-notes-list (simplenote2--get-new-note-files))))
     (when new-notes
       (widget-insert "== NEW NOTES\n\n")
       (mapc 'simplenote2--new-note-widget new-notes)))
   ;; Other notes list
   (let ((files (append
                 (mapcar (lambda (file) (cons file nil))
-                        (or simplenote2-filtered-notes-list
-                            (directory-files (simplenote2--notes-dir) t "^[a-zA-Z0-9_\\-]+$")))
+                        (or simplenote2-filtered-notes-list (simplenote2--get-note-files)))
                 (mapcar (lambda (file) (cons file t))
-                        (or simplenote2-filtered-trash-notes-list
-                            (directory-files (simplenote2--trash-dir) t "^[a-zA-Z0-9_\\-]+$"))))))
+                        (or simplenote2-filtered-trash-notes-list (simplenote2--get-trash-files))))))
     (simplenote2--list-files files))
   (use-local-map simplenote2-browser-mode-map)
   (widget-setup))
