@@ -846,8 +846,7 @@ are retrieved from the server forcefully."
   (if (or (null regexp) (string= "" regexp)) nil
     (or (split-string
          (shell-command-to-string
-          (concat "grep -il " dir "*" " -e " (shell-quote-argument regexp)
-                  " 2>/dev/null")) "\n" t "\s")
+          (concat "grep -sil " dir "*" " -e " (shell-quote-argument regexp))) "\n" t "\s")
         ;; Set dummy list to distinguish from no-filter state.
         '("no-match"))))
 
