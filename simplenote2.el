@@ -795,7 +795,8 @@ are retrieved from the server forcefully."
   "Show Simplenote browser screen."
   (interactive)
   (when (not (file-exists-p simplenote2-directory))
-      (make-directory simplenote2-directory t))
+    (make-directory simplenote2-directory t))
+  (simplenote2--filter-note-list nil)
   (switch-to-buffer "*Simplenote*")
   (simplenote2-browser-mode)
   (goto-char 1))
@@ -843,21 +844,24 @@ are retrieved from the server forcefully."
 
 (defun simplenote2--get-filtered-file-list (dir regexp)
   "Get file list on directory DIR filtered by REGEXP."
-  (if (or (null regexp) (string= "" regexp)) nil
-    (or (split-string
-         (shell-command-to-string
-          (concat "grep -sil " dir "*" " -e " (shell-quote-argument regexp))) "\n" t "\s")
-        ;; Set dummy list to distinguish from no-filter state.
-        '("no-match"))))
+  (split-string
+   (shell-command-to-string
+    (concat "grep -sil " dir "*" " -e " (shell-quote-argument regexp))) "\n" t "\s"))
 
 (defun simplenote2--filter-note-list (regexp)
   "Filter note list on browser screen by REGEXP."
   (setq simplenote2-filtered-notes-list
-        (simplenote2--get-filtered-file-list (simplenote2--notes-dir) regexp))
+        (if regexp
+            (simplenote2--get-filtered-file-list (simplenote2--notes-dir) regexp)
+          (simplenote2--get-note-files)))
   (setq simplenote2-filtered-new-notes-list
-        (simplenote2--get-filtered-file-list (simplenote2--new-notes-dir) regexp))
+        (if regexp
+            (simplenote2--get-filtered-file-list (simplenote2--new-notes-dir) regexp)
+          (simplenote2--get-new-note-files)))
   (setq simplenote2-filtered-trash-notes-list
-        (simplenote2--get-filtered-file-list (simplenote2--trash-dir) regexp))
+        (if regexp
+            (simplenote2--get-filtered-file-list (simplenote2--trash-dir) regexp)
+          (simplenote2--get-trash-files)))
   (simplenote2-browser-refresh))
 
 ;; Eventually this will do the work of applying the regex and whatnot
@@ -916,16 +920,14 @@ are retrieved from the server forcefully."
                            (simplenote2-browser-refresh)))
   (widget-insert "\n\n")
   ;; New notes list
-  (let ((new-notes (or simplenote2-filtered-new-notes-list (simplenote2--get-new-note-files))))
+  (let ((new-notes simplenote2-filtered-new-notes-list))
     (when new-notes
       (widget-insert "== NEW NOTES\n\n")
       (mapc 'simplenote2--new-note-widget new-notes)))
   ;; Other notes list
   (let ((files (append
-                (mapcar (lambda (file) (cons file nil))
-                        (or simplenote2-filtered-notes-list (simplenote2--get-note-files)))
-                (mapcar (lambda (file) (cons file t))
-                        (or simplenote2-filtered-trash-notes-list (simplenote2--get-trash-files))))))
+                (mapcar (lambda (file) (cons file nil)) simplenote2-filtered-notes-list)
+                (mapcar (lambda (file) (cons file t)) simplenote2-filtered-trash-notes-list))))
     (simplenote2--list-files files))
   (use-local-map simplenote2-browser-mode-map)
   (widget-setup))

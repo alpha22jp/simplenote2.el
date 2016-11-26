@@ -98,10 +98,7 @@ NEW-NOTE indicates whether the note is new note."
   (setq tabulated-list-entries
         (cl-loop for key being the hash-keys of simplenote2-notes-info
                  using (hash-values note-info)
-                 when (or (and (null simplenote2-filtered-notes-list)
-                               (null simplenote2-filtered-new-notes-list)
-                               (null simplenote2-filtered-trash-notes-list))
-                          (member (simplenote2--filename-for-note key)
+                 when (or (member (simplenote2--filename-for-note key)
                                   simplenote2-filtered-notes-list)
                           (member (simplenote2--filename-for-newnote key)
                                   simplenote2-filtered-new-notes-list)
@@ -190,6 +187,7 @@ NEW-NOTE indicates whether the note is new note."
     (unless buffer
       (with-current-buffer (get-buffer-create simplenote2-list-buffer-name)
         (setq buffer (current-buffer))
+        (simplenote2--filter-note-list nil)
         (simplenote2-list-mode)
         (simplenote2-list-refresh)))
     (switch-to-buffer buffer)))
