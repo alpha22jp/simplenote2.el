@@ -1122,15 +1122,19 @@ Reset pinned flag if ARG is given."
 
 (defun simplenote2--mark-note-for-deletion (key)
   "Mark note for deletion for note specified by KEY."
-  (when (file-exists-p (simplenote2--filename-for-note key))
-    (rename-file (simplenote2--filename-for-note key)
-                 (simplenote2--filename-for-note-marked-deleted key))))
+  (let* ((file (simplenote2--filename-for-note key))
+         (buf (get-file-buffer file)))
+    (when buf (kill-buffer buf))
+    (when (file-exists-p file)
+      (rename-file file (simplenote2--filename-for-note-marked-deleted key)))))
 
 (defun simplenote2--unmark-note-for-deletion (key)
   "Unmark note for deletion for note specified by KEY."
-  (when (file-exists-p (simplenote2--filename-for-note-marked-deleted key))
-    (rename-file (simplenote2--filename-for-note-marked-deleted key)
-                 (simplenote2--filename-for-note key))))
+  (let* ((file (simplenote2--filename-for-note-marked-deleted key))
+         (buf (get-file-buffer file)))
+    (when buf (kill-buffer buf))
+    (when (file-exists-p file)
+      (rename-file file (simplenote2--filename-for-note key)))))
 
 (defun simplenote2--create-note-locally ()
   "Create note locally, creating file on new note directory."
