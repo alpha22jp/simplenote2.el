@@ -67,13 +67,10 @@
           (tabulated-list-put-tag "D"))
         (forward-line))))
 
-(defun simplenote2-list-get-entry (key note-info)
-  "Get list entry for note specified by KEY and NOTE-INFO.
-NEW-NOTE indicates whether the note is new note."
-  (let* ((file (cond ((simplenote2--is-note-new key) (simplenote2--filename-for-newnote key))
-                     ((simplenote2--is-note-trashed key)
-                      (simplenote2--filename-for-note-marked-deleted key))
-                     (t (simplenote2--filename-for-note key))))
+(defun simplenote2-list-get-entry (file)
+  "Get list entry for note specified by FILE."
+  (let* ((key (file-name-nondirectory file))
+         (note-info (simplenote2--get-note-info key))
          (date (simplenote2--file-mtime file))
          (note (simplenote2--get-file-string file))
          (header (concat (and (nth 6 note-info) "* ")
@@ -96,15 +93,13 @@ NEW-NOTE indicates whether the note is new note."
 (defun simplenote2-list-refresh-entries ()
   "Refresh simplenote list entries."
   (setq tabulated-list-entries
-        (cl-loop for key being the hash-keys of simplenote2-notes-info
-                 using (hash-values note-info)
-                 when (or (member (simplenote2--filename-for-note key)
-                                  simplenote2-filtered-notes-list)
-                          (member (simplenote2--filename-for-newnote key)
-                                  simplenote2-filtered-new-notes-list)
-                          (member (simplenote2--filename-for-note-marked-deleted key)
-                                  simplenote2-filtered-trash-notes-list))
-                 collect (simplenote2-list-get-entry key note-info))))
+        (append
+         (cl-loop for file in simplenote2-filtered-new-notes-list
+                  collect (simplenote2-list-get-entry file))
+         (cl-loop for file in simplenote2-filtered-notes-list
+                  collect (simplenote2-list-get-entry file))
+         (cl-loop for file in simplenote2-filtered-trash-notes-list
+                  collect (simplenote2-list-get-entry file)))))
 
 (defun simplenote2-list-order-predicate (a b)
   "Predicate function to determine the order between A and B."
