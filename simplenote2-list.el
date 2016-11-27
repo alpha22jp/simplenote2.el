@@ -28,7 +28,7 @@
 (defconst simplenote2-list-buffer-name "*Simplenote List*")
 
 (defcustom simplenote2-list-format
-  '((header "Header" 16 nil identity)
+  '((header "Header" 24 nil identity)
     (modified "Modified" 16 simplenote2-list-order-predicate
               (lambda (date) (format-time-string "%Y/%m/%d %H:%M" date)))
     (tags "Tags" 10 nil
