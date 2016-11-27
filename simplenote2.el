@@ -122,6 +122,7 @@ to edit them, set this option to `markdown-mode'."
 
 (defvar simplenote2-tag-list nil)
 
+(defvar simplenote2-filter-regexp nil)
 (defvar simplenote2-filtered-notes-list nil)
 (defvar simplenote2-filtered-new-notes-list nil)
 (defvar simplenote2-filtered-trash-notes-list nil)
@@ -796,7 +797,6 @@ are retrieved from the server forcefully."
   (interactive)
   (when (not (file-exists-p simplenote2-directory))
     (make-directory simplenote2-directory t))
-  (simplenote2--filter-note-list nil)
   (switch-to-buffer "*Simplenote*")
   (simplenote2-browser-mode)
   (goto-char 1))
@@ -848,29 +848,30 @@ are retrieved from the server forcefully."
    (shell-command-to-string
     (concat "grep -sil " dir "*" " -e " (shell-quote-argument regexp))) "\n" t "\s"))
 
-(defun simplenote2--filter-note-list (regexp)
-  "Filter note list on browser screen by REGEXP."
+(defun simplenote2--filter-note-list ()
+  "Filter note list on browser screen with `simplenote2-filter-regexp'."
   (setq simplenote2-filtered-notes-list
-        (if regexp
-            (simplenote2--get-filtered-file-list (simplenote2--notes-dir) regexp)
+        (if simplenote2-filter-regexp
+            (simplenote2--get-filtered-file-list (simplenote2--notes-dir) simplenote2-filter-regexp)
           (simplenote2--get-note-files)))
   (setq simplenote2-filtered-new-notes-list
-        (if regexp
-            (simplenote2--get-filtered-file-list (simplenote2--new-notes-dir) regexp)
+        (if simplenote2-filter-regexp
+            (simplenote2--get-filtered-file-list (simplenote2--new-notes-dir) simplenote2-filter-regexp)
           (simplenote2--get-new-note-files)))
   (setq simplenote2-filtered-trash-notes-list
-        (if regexp
-            (simplenote2--get-filtered-file-list (simplenote2--trash-dir) regexp)
-          (simplenote2--get-trash-files)))
-  (simplenote2-browser-refresh))
+        (if simplenote2-filter-regexp
+            (simplenote2--get-filtered-file-list (simplenote2--trash-dir) simplenote2-filter-regexp)
+          (simplenote2--get-trash-files))))
 
 ;; Eventually this will do the work of applying the regex and whatnot
 (setq simplenote2--search-field
       (lambda (widget &rest ignore)
-        (simplenote2--filter-note-list (widget-value widget))))
+        (setq simplenote2-filter-regexp (widget-value widget))
+        (simplenote2-browser-refresh)))
 
 (defun simplenote2--menu-setup ()
   "Setup browser screen menu and content."
+  (simplenote2--filter-note-list)
   (kill-all-local-variables)
   (let ((inhibit-read-only t))
     (erase-buffer))
@@ -916,7 +917,7 @@ are retrieved from the server forcefully."
   (widget-create 'push-button
                  :tag "Clear search"
                  :action (lambda (widget &optional _event)
-                           (simplenote2--filter-note-list nil)
+                           (setq simplenote2-filter-regexp nil)
                            (simplenote2-browser-refresh)))
   (widget-insert "\n\n")
   ;; New notes list

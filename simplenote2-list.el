@@ -144,7 +144,8 @@
   "Filter notes on Simplenote list screen by regexp input."
   (interactive)
   (let ((regexp (read-string "Input regexp: ")))
-    (simplenote2--filter-note-list regexp)))
+    (setq simplenote2-filter-regexp regexp)
+    (simplenote2-browser-refresh)))
 
 (defvar simplenote2-list-mode-map
   (let ((map (make-sparse-keymap)))
@@ -170,8 +171,9 @@
 
 (defun simplenote2-list-refresh ()
   "Refresh simplenote list."
+  (simplenote2--filter-note-list)
   (simplenote2-list-refresh-entries)
-  (tabulated-list-print)
+  (tabulated-list-print t)
   (simplenote2-list-refresh-mark))
 
 ;;;###autoload
@@ -182,7 +184,6 @@
     (unless buffer
       (with-current-buffer (get-buffer-create simplenote2-list-buffer-name)
         (setq buffer (current-buffer))
-        (simplenote2--filter-note-list nil)
         (simplenote2-list-mode)
         (simplenote2-list-refresh)))
     (switch-to-buffer buffer)))
