@@ -816,6 +816,18 @@ are retrieved from the server forcefully."
   (setq simplenote2-filter-note-by-and-condition
         (if simplenote2-filter-note-by-and-condition nil t)))
 
+(defun simplenote2--note-filtered-by-tag-p (file)
+  "Return whether the note specified by FILE is filtered by current tag filtering condition."
+  (let ((note-info (simplenote2--get-note-info (file-name-nondirectory file))))
+    (or (not simplenote2-filter-note-tag-list)
+        (let* ((tag-list (nth 4 note-info))
+               (tag-filtered (cl-loop for tag in simplenote2-filter-note-tag-list
+                                      when (simplenote2--tag-existp tag tag-list)
+                                      collect tag)))
+          (if simplenote2-filter-note-by-and-condition
+              (equal tag-filtered simplenote2-filter-note-tag-list)
+            (consp tag-filtered))))))
+
 (defun simplenote2--list-files (passed-files)
   "Display list of the notes specified by PASSED-FILES."
   ;; If we're not searching from the filter, we need all of the files. If we
@@ -829,18 +841,8 @@ are retrieved from the server forcefully."
         (widget-insert (format " [%s]" tag)))
       (widget-insert "\n\n")
       (dolist (file files)
-        (let ((note-info (gethash (file-name-nondirectory (car file))
-                                  simplenote2-notes-info)))
-          (when (or (not simplenote2-filter-note-tag-list)
-                    (let* ((tag-list (nth 4 note-info))
-                           (tag-filtered
-                            (loop for tag in simplenote2-filter-note-tag-list
-                                  when (simplenote2--tag-existp tag tag-list)
-                                  collect tag)))
-                      (if simplenote2-filter-note-by-and-condition
-                          (equal tag-filtered simplenote2-filter-note-tag-list)
-                        (consp tag-filtered))))
-            (simplenote2--other-note-widget file)))))))
+        (when (simplenote2--note-filtered-by-tag-p (car file))
+          (simplenote2--other-note-widget file))))))
 
 (defun simplenote2--get-filtered-file-list (dir regexp)
   "Get file list on directory DIR filtered by REGEXP."

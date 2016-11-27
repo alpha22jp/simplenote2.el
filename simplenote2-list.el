@@ -97,8 +97,10 @@
          (cl-loop for file in simplenote2-filtered-new-notes-list
                   collect (simplenote2-list-get-entry file))
          (cl-loop for file in simplenote2-filtered-notes-list
+                  when (simplenote2--note-filtered-by-tag-p file)
                   collect (simplenote2-list-get-entry file))
          (cl-loop for file in simplenote2-filtered-trash-notes-list
+                  when (simplenote2--note-filtered-by-tag-p file)
                   collect (simplenote2-list-get-entry file)))))
 
 (defun simplenote2-list-order-predicate (a b)
@@ -147,6 +149,12 @@
     (setq simplenote2-filter-regexp regexp)
     (simplenote2-browser-refresh)))
 
+(defun simplenote2-list-toggle-filter-condition ()
+  "Toggle filter condition between AND and OR."
+  (interactive)
+  (simplenote2--toggle-filter-condition)
+  (simplenote2-browser-refresh))
+
 (defvar simplenote2-list-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map tabulated-list-mode-map)
@@ -154,8 +162,10 @@
     (define-key map "a" 'simplenote2--create-note-locally)
     (define-key map "g" 'simplenote2-sync-notes)
     (define-key map "d" 'simplenote2-list-mark-for-deletion)
+    (define-key map "t" 'simplenote2-filter-note-by-tag)
     (define-key map "u" 'simplenote2-list-unmark-for-deletion)
     (define-key map "/" 'simplenote2-list-filter-notes)
+    (define-key map "^" 'simplenote2-list-toggle-filter-condition)
     map)
   "Local keymap for `simplenote2-list-mode' buffers.")
 
