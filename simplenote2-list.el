@@ -23,9 +23,6 @@
 ;; This is a new browser UI for simplenote2 based on tabulated-list-mode.
 
 ;;; Code:
-(require 'cl-lib)
-
-(defconst simplenote2-list-buffer-name "*Simplenote List*")
 
 (defcustom simplenote2-list-format
   '((header "Header" 24 nil identity)
@@ -58,7 +55,9 @@
   :type '(cons string boolean)
   :group 'simplenote2)
 
-(defun simplenote2-list-refresh-mark ()
+(defconst simplenote2--list-buffer-name "*Simplenote List*")
+
+(defun simplenote2--list-refresh-mark ()
   "Refresh all mark in simplenote list buffer."
   (save-excursion
       (goto-char (point-min))
@@ -90,16 +89,16 @@
                                                format)
                                              value)))))))
 
-(defun simplenote2-list-refresh-entries ()
+(defun simplenote2--list-refresh-entries ()
   "Refresh simplenote list entries."
   (setq tabulated-list-entries
         (append
-         (cl-loop for file in simplenote2-filtered-new-notes-list
+         (cl-loop for file in simplenote2--filtered-new-notes-list
                   collect (simplenote2-list-get-entry file))
-         (cl-loop for file in simplenote2-filtered-notes-list
+         (cl-loop for file in simplenote2--filtered-notes-list
                   when (simplenote2--note-filtered-by-tag-p file)
                   collect (simplenote2-list-get-entry file))
-         (cl-loop for file in simplenote2-filtered-trash-notes-list
+         (cl-loop for file in simplenote2--filtered-trash-notes-list
                   when (simplenote2--note-filtered-by-tag-p file)
                   collect (simplenote2-list-get-entry file)))))
 
@@ -146,7 +145,7 @@
   "Filter notes on Simplenote list screen by regexp input."
   (interactive)
   (let ((regexp (read-string "Input regexp: ")))
-    (setq simplenote2-filter-regexp regexp)
+    (setq simplenote2--filter-regexp regexp)
     (simplenote2-browser-refresh)))
 
 (defun simplenote2-list-toggle-filter-condition ()
@@ -182,17 +181,17 @@
 (defun simplenote2-list-refresh ()
   "Refresh simplenote list."
   (simplenote2--filter-note-list)
-  (simplenote2-list-refresh-entries)
+  (simplenote2--list-refresh-entries)
   (tabulated-list-print t)
-  (simplenote2-list-refresh-mark))
+  (simplenote2--list-refresh-mark))
 
 ;;;###autoload
 (defun simplenote2-list ()
   "Show Simplenote List buffer."
   (interactive)
-  (let ((buffer (get-buffer simplenote2-list-buffer-name)))
+  (let ((buffer (get-buffer simplenote2--list-buffer-name)))
     (unless buffer
-      (with-current-buffer (get-buffer-create simplenote2-list-buffer-name)
+      (with-current-buffer (get-buffer-create simplenote2--list-buffer-name)
         (setq buffer (current-buffer))
         (simplenote2-list-mode)
         (simplenote2-list-refresh)))
