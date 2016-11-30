@@ -9,6 +9,8 @@ The major improvement points from the original version are
 * Use of Simplenote API ver.2 to interact with server which can provide the support of tags, automatic merge of notes, and some other features.
 * Asynchronous and concurrent access to server as far as possible which brings faster sync of notes and non-blocking UI.
 
+**Since version 3.0.0, a new type of browser screen based on tabulated list has been introduced. See "Simplenote List" section below.**
+
 ## Requirements
 
 This package requires Emacs 23 or later. Tested on Emacs 23.3 and Emacs 24.3 on Linux.
@@ -64,6 +66,21 @@ option to create new notes, and edit or delete existing notes. Syncing
 is not automatic but has to be invoked manually either by clicking the
 `[Sync with sever]` button at the top of the Simplenote browser or by
 `M-x simplenote2-sync-notes`.
+
+### Simplenote list
+
+This is another browser screen based on tabulated list mode invoked by
+`M-x simplenote2-list`. It's simpler and cleaner than Simplenote browser.
+Available shortcuts in this mode are the followings.
+
+* `g`: sync with the server (same as `M-x simplenote2-sync-notes`)
+* `a`: create a new note
+* `Enter`: open note on the current line
+* `d`: mark note on the current line for deletion
+* `u`: unmark note on the current line for deletion
+* `t`: set tags for filtering (same as `M-x simplenote2-filter-note-by-tag`)
+* `^`: toggle tags filtering condition between "AND" and "OR"
+* `/`: set regexp for filtering
 
 ### Sync individual notes
 
@@ -133,6 +150,11 @@ When you open simplenote note from Simplenote browser, minor mode `simplenote2-n
 ```
 
 ## History
+
+version 3.0.0 (2016-11-27)
+
+* New: Introduce a new type of browser screen based on tabulated list.
+* Fix: #18: Can not retrieve all notes when there are many notes to sync.
 
 version 2.2.2 (2015-04-05)
 
