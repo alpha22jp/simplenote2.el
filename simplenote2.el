@@ -47,9 +47,6 @@
 (require 'wid-edit)
 (require 'request-deferred)
 
-(when (require 'tabulated-list nil 'noerror)
-  (require 'simplenote2-list))
-
 (defcustom simplenote2-directory (expand-file-name "~/.simplenote2/")
   "Simplenote directory."
   :type 'directory

@@ -71,6 +71,12 @@ is not automatic but has to be invoked manually either by clicking the
 
 This is another browser screen based on tabulated list mode invoked by
 `M-x simplenote2-list`. It's simpler and cleaner than Simplenote browser.
+To use this mode, add the following line to your `.emacs`.
+
+```.emacs
+(require 'simplenote2-list)
+```
+
 Available shortcuts in this mode are the followings.
 
 * `g`: sync with the server (same as `M-x simplenote2-sync-notes`)
