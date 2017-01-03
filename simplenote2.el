@@ -38,7 +38,6 @@
 
 ;;; Code:
 
-
 
 (eval-when-compile (require 'cl))
 (require 'url)
@@ -132,7 +131,7 @@ to edit them, set this option to `markdown-mode'."
 
 (defvar simplenote2--sync-process-running nil)
 
-
+
 ;;; Unitity functions
 
 (defun simplenote2--file-mtime (file)
@@ -845,9 +844,11 @@ are retrieved from the server forcefully."
 
 (defun simplenote2--get-filtered-file-list (dir regexp)
   "Get file list on directory DIR filtered by REGEXP."
-  (split-string
-   (shell-command-to-string
-    (concat "grep -sil " dir "*" " -e " (shell-quote-argument regexp))) "\n" t "\s"))
+  (let ((directory-not-empty-p (directory-files dir nil "^[^.].+")))
+    (when directory-not-empty-p
+      (split-string
+       (shell-command-to-string
+        (concat "grep -sil " dir "*" " -e " (shell-quote-argument regexp))) "\n" t "\s"))))
 
 (defun simplenote2--filter-note-list ()
   "Filter note list on browser screen with `simplenote2--filter-regexp'."
