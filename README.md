@@ -13,7 +13,7 @@ The major improvement points from the original version are
 
 ## Requirements
 
-This package requires Emacs 23 or later. Tested on Emacs 23.3 and Emacs 24.3 on Linux.
+This package requires Emacs 24 or later. Tested on Emacs 24.3 on Linux.
 
 ## Installation
 
@@ -71,11 +71,6 @@ is not automatic but has to be invoked manually either by clicking the
 
 This is another browser screen based on tabulated list mode invoked by
 `M-x simplenote2-list`. It's simpler and cleaner than Simplenote browser.
-To use this mode, add the following line to your `.emacs`.
-
-```.emacs
-(require 'simplenote2-list)
-```
 
 Available shortcuts in this mode are the followings.
 

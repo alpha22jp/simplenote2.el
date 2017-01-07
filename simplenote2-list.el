@@ -24,8 +24,6 @@
 
 ;;; Code:
 
-(require 'simplenote2)
-
 (defcustom simplenote2-list-format
   '((header "Header" 24 nil identity)
     (modified "Modified" 16 simplenote2-list-order-predicate
