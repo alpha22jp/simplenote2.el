@@ -145,7 +145,7 @@
   "Filter notes on Simplenote list screen by regexp input."
   (interactive)
   (let ((regexp (read-string "Input regexp: ")))
-    (setq simplenote2--filter-regexp regexp)
+    (setq simplenote2--filter-regexp (if (> (length regexp) 0) regexp nil))
     (simplenote2-browser-refresh)))
 
 (defun simplenote2-list-toggle-filter-condition ()
