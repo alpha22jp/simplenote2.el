@@ -109,6 +109,8 @@
          (note-info-b (simplenote2--get-note-info key-b)))
     (cond ((simplenote2--is-note-new key-a) t) ;; new note should be on the top
           ((simplenote2--is-note-new key-b) nil)
+          ((and (nth 6 note-info-a) (nth 6 note-info-b))
+           (> (nth 3 note-info-a) (nth 3 note-info-b)))
           ((nth 6 note-info-a) t) ;; pinned note should be on the top
           ((nth 6 note-info-b) nil)
           (t (> (nth 3 note-info-a) (nth 3 note-info-b))))))
