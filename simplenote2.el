@@ -1,4 +1,4 @@
-;;; simplenote2.el --- Interact with simple-note.appspot.com
+;;; simplenote2.el --- Interact with app.simplenote.com
 
 ;; Copyright (C) 2009, 2010 Konstantinos Efstathiou <konstantinos@efstathiou.gr>
 ;; Copyright (C) 2015 alpha22jp <alpha22jp@gmail.com>
@@ -110,7 +110,7 @@ to edit them, set this option to `markdown-mode'."
   :safe 'booleanp
   :group 'simplenote2)
 
-(defvar simplenote2--server-url "https://simple-note.appspot.com/")
+(defvar simplenote2--server-url "https://app.simplenote.com/")
 
 (defvar simplenote2--email-was-read-interactively nil)
 (defvar simplenote2--password-was-read-interactively nil)
