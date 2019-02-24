@@ -284,9 +284,9 @@ LIMIT specifies the limit of variables to dump."
 (defun simplenote2--save-note (note)
   "Save info and content gotten from server for note specified by NOTE."
   (let ((key (cdr (assq 'key note)))
-        (systemtags (cdr (assq 'systemtags note)))
-        (createdate (string-to-number (cdr (assq 'createdate note))))
-        (modifydate (string-to-number (cdr (assq 'modifydate note))))
+        (systemtags (cdr (assq 'systemTags note)))
+        (createdate (cdr (assq 'creationDate note)))
+        (modifydate (cdr (assq 'modificationDate note)))
         (content (cdr (assq 'content note))))
     ;; Save note information to 'simplenote2-notes-info
     (puthash key (list (cdr (assq 'syncnum note))
@@ -413,16 +413,17 @@ of syncing note.  Notes marked as deleted are not included in the list."
       (lambda (token)
         (deferred:$
           (request-deferred
-           (concat simplenote2--server-url "api2/data/" key)
+           (concat simplenote2--api-server-url "i/" key)
            :type "GET"
-           :params (list (cons "auth" token)
-                         (cons "email" simplenote2-email))
+           :headers (list (cons "X-Simperium-Token" simplenote2--token))
            :parser 'json-read)
           (deferred:nextc it
             (lambda (res)
               (if (request-response-error-thrown res)
                   (message "Could not retreive note %s" key)
-                (simplenote2--save-note (request-response-data res))))))))))
+                ;; (simplenote2--save-note (request-response-data res))
+                (message "note[%s]: %s" key (request-response-data res))
+                ))))))))
 
 (defun simplenote2--mark-note-as-deleted-deferred (key)
   "Request server to mark note for KEY as deleted."
