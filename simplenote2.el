@@ -110,7 +110,13 @@ to edit them, set this option to `markdown-mode'."
   :safe 'booleanp
   :group 'simplenote2)
 
-(defvar simplenote2--server-url "https://app.simplenote.com/")
+(defvar simplenote2--simplenote-app-id "chalk-bump-f49")
+(defvar simplenote2--simplenote-api-key
+  (base64-decode-string "YzhjMmI4NjMzNzE1NGNkYWJjOTg5YjIzZTMwYzZiZjQ="))
+(defvar simplenote2--auth-server-url
+  (concat "https://auth.simperium.com/1/" simplenote2--simplenote-app-id))
+(defvar simplenote2--api-server-url
+  (concat "https://api.simperium.com/1/" simplenote2--simplenote-app-id "/note/"))
 
 (defvar simplenote2--email-was-read-interactively nil)
 (defvar simplenote2--password-was-read-interactively nil)
@@ -335,13 +341,12 @@ otherwise gets token from server using `simplenote2-email' and
       (deferred:next (lambda () simplenote2--token))
     (deferred:$
       (request-deferred
-       (concat simplenote2--server-url "api/login")
+       (concat simplenote2--auth-server-url "/authorize/")
        :type "POST"
-       :data (base64-encode-string
-              (format "email=%s&password=%s"
-                      (url-hexify-string (simplenote2--email))
-                      (url-hexify-string (simplenote2--password))))
-       :parser 'buffer-string)
+       :headers (list (cons "X-Simperium-API-Key" simplenote2--simplenote-api-key))
+       :data (json-encode (list (cons "username" (simplenote2--email))
+                                (cons "password" (simplenote2--password))))
+       :parser 'json-read)
       (deferred:nextc it
         (lambda (res)
           (if (request-response-error-thrown res)
@@ -353,7 +358,7 @@ otherwise gets token from server using `simplenote2-email' and
                 (setq simplenote2--token nil)
                 (error "Simplenote authentication failed"))
             (message "Simplenote authentication succeeded")
-            (setq simplenote2--token (request-response-data res))))))))
+            (setq simplenote2--token (cdr (assq 'access_token (request-response-data res))))))))))
 
 
 ;;; API calls for index and notes
