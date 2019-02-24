@@ -380,13 +380,13 @@ of syncing note.  Notes marked as deleted are not included in the list."
       (simplenote2--get-token-deferred)
       (lambda (token)
         (deferred:$
-          (let ((params (list '("length" . "100")
-                              (cons "auth" token)
-                              (cons "email" simplenote2-email))))
+          (let ((params (list '("data" . "1")
+                              '("limit" . 100))))
             (when mark (push (cons "mark" mark) params))
             (request-deferred
-             (concat simplenote2--server-url "api2/index")
+             (concat simplenote2--api-server-url "index")
              :type "GET"
+             :headers (list (cons "X-Simperium-Token" simplenote2--token))
              :params params
              :parser 'json-read))
           (deferred:nextc it
@@ -394,10 +394,11 @@ of syncing note.  Notes marked as deleted are not included in the list."
               (if (request-response-error-thrown res)
                   (progn (message "Could not get index") t)
                 (mapc (lambda (e)
-                        (unless (= (cdr (assq 'deleted e)) 1)
-                          (push (cons (cdr (assq 'key e))
-                                      (cdr (assq 'syncnum e))) index)))
-                      (cdr (assq 'data (request-response-data res))))
+                        (if (equal (cdr (assq 'deleted (cdr (assq 'd e)))) :json-false)
+                          (push (cons (cdr (assq 'id e))
+                                    (cdr (assq 'v e))) index)))
+                      (cdr (assq 'index (request-response-data res))))
+                (message "length: %d, index: %s" (length index) index)
                 (if (assq 'mark (request-response-data res))
                     (simplenote2--get-index-deferred
                      index
