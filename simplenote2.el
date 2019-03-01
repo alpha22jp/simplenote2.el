@@ -281,16 +281,14 @@ LIMIT specifies the limit of variables to dump."
   (when (file-readable-p (simplenote2--filename-for-notes-info))
     (load-file (simplenote2--filename-for-notes-info))))
 
-(defun simplenote2--save-note (note)
-  "Save info and content gotten from server for note specified by NOTE."
-  (let ((key (cdr (assq 'key note)))
-        (systemtags (cdr (assq 'systemTags note)))
+(defun simplenote2--save-note (key version note)
+  "Save info and content gotten from server for note specified by KEY, VERSION and NOTE."
+  (let ((systemtags (cdr (assq 'systemTags note)))
         (createdate (cdr (assq 'creationDate note)))
         (modifydate (cdr (assq 'modificationDate note)))
         (content (cdr (assq 'content note))))
     ;; Save note information to 'simplenote2-notes-info
-    (puthash key (list (cdr (assq 'syncnum note))
-                       (cdr (assq 'version note))
+    (puthash key (list version
                        createdate
                        modifydate
                        (append (cdr (assq 'tags note)) nil)
@@ -421,9 +419,9 @@ of syncing note.  Notes marked as deleted are not included in the list."
             (lambda (res)
               (if (request-response-error-thrown res)
                   (message "Could not retreive note %s" key)
-                ;; (simplenote2--save-note (request-response-data res))
-                (message "note[%s]: %s" key (request-response-data res))
-                ))))))))
+                (let ((version (string-to-number (request-response-header res "X-Simperium-Version")))
+                      (note (request-response-data res)))
+                  (simplenote2--save-note key version note))))))))))
 
 (defun simplenote2--mark-note-as-deleted-deferred (key)
   "Request server to mark note for KEY as deleted."
@@ -491,10 +489,11 @@ of syncing note.  Notes marked as deleted are not included in the list."
               (if (request-response-error-thrown res)
                   (progn (if key (message "Could not update note %s" key)
                            (message "Could not create note %s" file)) nil)
-                (let ((note (request-response-data res)))
+                (let ((note (request-response-data res))
+                      (version (request-response-header res "X-Simperium-Version")))
                   (unless (assq 'content note)
                     (push (cons 'content (simplenote2--get-file-string file)) note))
-                  (simplenote2--save-note note))))))))))
+                  (simplenote2--save-note note version))))))))))
 
 
 ;;; Push and pull buffer as note
