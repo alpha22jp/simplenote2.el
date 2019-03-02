@@ -45,6 +45,8 @@
 (require 'widget)
 (require 'wid-edit)
 (require 'request-deferred)
+(require 'uuidgen)
+(require 'unicode-escape)
 (require 'simplenote2-list)
 
 (defcustom simplenote2-directory (expand-file-name "~/.simplenote2/")
@@ -283,28 +285,17 @@ LIMIT specifies the limit of variables to dump."
 
 (defun simplenote2--save-note (key version note)
   "Save info and content gotten from server for note specified by KEY, VERSION and NOTE."
-  (let ((systemtags (cdr (assq 'systemTags note)))
-        (createdate (cdr (assq 'creationDate note)))
-        (modifydate (cdr (assq 'modificationDate note)))
-        (content (cdr (assq 'content note))))
-    ;; Save note information to 'simplenote2-notes-info
-    (puthash key (list version
-                       createdate
-                       modifydate
-                       (append (cdr (assq 'tags note)) nil)
-                       (simplenote2--tag-existp "markdown" systemtags)
-                       (simplenote2--tag-existp "pinned" systemtags)
-                       nil)
-             simplenote2-notes-info)
-    ;; Write note content to local file
-    ;; "content" may not be returned from server in the case process is "update"
-    ;; but content isn't changed
-    (when content
-      (let ((file (simplenote2--filename-for-note key))
-            (text (decode-coding-string content 'utf-8)))
-        (write-region text nil file nil)
-        (set-file-times file (seconds-to-time modifydate))))
-    key))
+  (let ((file (simplenote2--filename-for-note key))
+        (text (decode-coding-string (cdr (assq 'content note)) 'utf-8))
+        (modifydate (cdr (assq 'modificationDate note))))
+    (write-region text nil file nil)
+    (set-file-times file (seconds-to-time modifydate)))
+  (delete (assq 'content note) note)
+  (delete (assq 'deleted note) note)
+  (push (cons 'version version) note)
+  ;; Save note information to 'simplenote2-notes-info
+  (puthash key note simplenote2-notes-info)
+  key)
 
 
 ;;; Simplenote authentication
@@ -454,46 +445,39 @@ of syncing note.  Notes marked as deleted are not included in the list."
       (simplenote2--get-token-deferred)
       (lambda (token)
         (deferred:$
-          (let* ((modifydate
-                  ;; Omit microseconds since server doesn't accept it
-                  (format "%.6f" (simplenote2--file-mtime file)))
-                 (post-data
-                  (list (cons "content" (simplenote2--get-file-string file))
-                        (cons "modifydate" modifydate))))
-            ;; Set "createdate" for new note
-            (unless key (push (cons "createdate" modifydate) post-data))
-            ;; Set "version" for existing note
-            (when note-info
-              (push (cons "version" (nth 1 note-info)) post-data))
-            ;; When locally modified flag is set, update tags and systemtags
-            (when (nth 7 note-info)
-              (let ((system-tags []))
-                (when (nth 5 note-info)
-                  (setf system-tags (vconcat system-tags ["markdown"])))
-                (when (nth 6 note-info)
-                  (setf system-tags (vconcat system-tags ["pinned"])))
-                (push (cons "systemtags" system-tags) post-data))
-              (when (nth 4 note-info)
-                (push (cons "tags" (nth 4 note-info)) post-data)))
+          (let ((modifydate (simplenote2--file-mtime file)))
+            (push (cons 'content (simplenote2--get-file-string file)) note-info)
+            (if (assq 'modificationDate note-info)
+                (setcdr (assq 'modificationDate note-info) modifydate)
+              (push (cons 'modificationDate modifydate) note-info))
+            (push '(deleted . :json-false) note-info)
+            ;; Set key, "creationDate" and other missing items for new note
+            (unless key
+              (setq key (replace-regexp-in-string "-" "" (uuidgen-4)))
+              (push (cons 'creationDate modifydate) note-info)
+              (push '(tags . []) note-info)
+              (push '(systemTags . []) note-info)
+              (push '(shareURL . "") note-info)
+              (push '(publishURL . "") note-info))
+
+            (message "post-data: %s" (json-encode note-info))
             (request-deferred
-             (concat simplenote2--server-url "api2/data"
-                     (and key (concat "/" key)))
+             (concat simplenote2--api-server-url "i/" key)
              :type "POST"
-             :params (list (cons "auth" token)
-                           (cons "email" simplenote2-email))
-             :data (url-hexify-string (json-encode post-data))
-             :headers '(("Content-Type" . "application/json"))
+             :params '(("response" . "1"))
+             :data (unicode-escape (json-encode note-info))
+             :headers (list (cons "X-Simperium-Token" simplenote2--token)
+                            '("Content-Type" . "application/json"))
              :parser 'json-read))
           (deferred:nextc it
             (lambda (res)
               (if (request-response-error-thrown res)
-                  (progn (if key (message "Could not update note %s" key)
-                           (message "Could not create note %s" file)) nil)
+                  (message "Could not update note %s [%s]" key (request-response-status-code res))
                 (let ((note (request-response-data res))
                       (version (request-response-header res "X-Simperium-Version")))
-                  (unless (assq 'content note)
-                    (push (cons 'content (simplenote2--get-file-string file)) note))
-                  (simplenote2--save-note note version))))))))))
+                  (message "key: %s, version: %s, note: %s" key version note)
+                  (simplenote2--save-note key version note)
+                  )))))))))
 
 
 ;;; Push and pull buffer as note
