@@ -414,61 +414,39 @@ of syncing note.  Notes marked as deleted are not included in the list."
                       (note (request-response-data res)))
                   (simplenote2--save-note key version note))))))))))
 
-(defun simplenote2--mark-note-as-deleted-deferred (key)
-  "Request server to mark note for KEY as deleted."
-  (lexical-let ((key key))
-    (deferred:nextc
-      (simplenote2--get-token-deferred)
-      (lambda (token)
-        (deferred:$
-          (request-deferred
-           (concat simplenote2--server-url "api2/data/" key)
-           :type "POST"
-           :params (list (cons "auth" token)
-                         (cons "email" simplenote2-email))
-           :data (json-encode (list (cons "deleted" 1)))
-           :parser 'json-read)
-          (deferred:nextc it
-            (lambda (res)
-              (if (request-response-error-thrown res)
-                  (progn (message "Could not delete note %s" key) nil)
-                (request-response-data res)))))))))
-
-(defun simplenote2--update-note-deferred (file)
-  "Request server to update or create note with file specified by FILE."
+(defun simplenote2--update-note-deferred (file &optional delete)
+  "Request server to update or create note with file specified by FILE.
+If DELETE is non-nil, this function marks note as deleted."
   (lexical-let* ((file file)
-                 (key (file-name-nondirectory file))
-                 (note-info (simplenote2--get-note-info key)))
-    (unless (string= (simplenote2--notes-dir) (file-name-directory file))
-      (setq key nil))
+                 (delete delete)
+                 (note-info (simplenote2--get-note-info (file-name-nondirectory file)))
+                 (modifydate (simplenote2--file-mtime file))
+                 (key (if note-info (file-name-nondirectory file) nil)))
     (deferred:nextc
       (simplenote2--get-token-deferred)
       (lambda (token)
         (deferred:$
-          (let ((modifydate (simplenote2--file-mtime file)))
-            (push (cons 'content (simplenote2--get-file-string file)) note-info)
-            (if (assq 'modificationDate note-info)
-                (setcdr (assq 'modificationDate note-info) modifydate)
-              (push (cons 'modificationDate modifydate) note-info))
-            (push '(deleted . :json-false) note-info)
-            ;; Set key, "creationDate" and other missing items for new note
-            (unless key
-              (setq key (replace-regexp-in-string "-" "" (uuidgen-4)))
-              (push (cons 'creationDate modifydate) note-info)
-              (push '(tags . []) note-info)
-              (push '(systemTags . []) note-info)
-              (push '(shareURL . "") note-info)
-              (push '(publishURL . "") note-info))
-
-            (message "post-data: %s" (json-encode note-info))
-            (request-deferred
-             (concat simplenote2--api-server-url "i/" key)
-             :type "POST"
-             :params '(("response" . "1"))
-             :data (unicode-escape (json-encode note-info))
-             :headers (list (cons "X-Simperium-Token" simplenote2--token)
-                            '("Content-Type" . "application/json"))
-             :parser 'json-read))
+          ;; Set key, "creationDate" and other missing items for new note
+          (unless note-info
+            (setq key (replace-regexp-in-string "-" "" (uuidgen-4)))
+            (push (cons 'creationDate modifydate) note-info)
+            (push (cons 'modificationDate modifydate) note-info)
+            (push '(tags . []) note-info)
+            (push '(systemTags . []) note-info)
+            (push '(shareURL . "") note-info)
+            (push '(publishURL . "") note-info))
+          (push (cons 'content (simplenote2--get-file-string file)) note-info)
+          (push (cons 'deleted (if delete t :json-false)) note-info)
+          (setcdr (assq 'modificationDate note-info) modifydate)
+          (message "post-data: %s" (json-encode note-info))
+          (request-deferred
+           (concat simplenote2--api-server-url "i/" key)
+           :type "POST"
+           :params '(("response" . "1"))
+           :data (unicode-escape (json-encode note-info))
+           :headers (list (cons "X-Simperium-Token" simplenote2--token)
+                          '("Content-Type" . "application/json"))
+           :parser 'json-read)
           (deferred:nextc it
             (lambda (res)
               (if (request-response-error-thrown res)
@@ -670,7 +648,7 @@ are retrieved from the server forcefully."
                    (lexical-let* ((file file)
                                   (key (file-name-nondirectory file)))
                      (deferred:nextc
-                       (simplenote2--mark-note-as-deleted-deferred key)
+                       (simplenote2--update-note-deferred file t)
                        (lambda (ret) (when ret
                                        (message "Deleted on local: %s" key)
                                        (simplenote2--delete-note-locally file))))))
