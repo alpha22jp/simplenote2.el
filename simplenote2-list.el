@@ -191,13 +191,15 @@
 (defun simplenote2-list ()
   "Show Simplenote List buffer."
   (interactive)
-  (let ((buffer (get-buffer simplenote2--list-buffer-name)))
-    (unless buffer
-      (with-current-buffer (get-buffer-create simplenote2--list-buffer-name)
-        (setq buffer (current-buffer))
-        (simplenote2-list-mode)
-        (simplenote2-list-refresh)))
-    (switch-to-buffer buffer)))
+  (if (< simplenote2-notes-info-version simplenote2--notes-info-current-version)
+      (message simplenote2--notes-info-update-message)
+    (let ((buffer (get-buffer simplenote2--list-buffer-name)))
+      (unless buffer
+        (with-current-buffer (get-buffer-create simplenote2--list-buffer-name)
+          (setq buffer (current-buffer))
+          (simplenote2-list-mode)
+          (simplenote2-list-refresh)))
+      (switch-to-buffer buffer))))
 
 (provide 'simplenote2-list)
 ;;; simplenote2-list.el ends here
