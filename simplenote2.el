@@ -720,10 +720,10 @@ are retrieved from the server forcefully."
                       (dolist (elem index)
                         (let* ((key (car elem))
                                (note-info (gethash key simplenote2-notes-info)))
-                          ;; Compare syncnum on server and local data.
+                          ;; Compare version between server and local data.
                           ;; If the note information isn't found, the note would be a
                           ;; newly created note on server.
-                          (when (< (if note-info (nth 0 note-info) 0) (cdr elem))
+                          (when (< (if note-info (nth 1 note-info) 0) (cdr elem))
                             (message "Updated on server: %s" key)
                             (push key keys-to-update))))
                     (setq keys-to-update (mapcar (lambda (e) (car e)) index)))
