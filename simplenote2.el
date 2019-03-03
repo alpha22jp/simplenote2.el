@@ -468,10 +468,8 @@ If DELETE is non-nil, this function marks note as deleted."
               (if (request-response-error-thrown res)
                   (message "Could not update note %s [%s]" key (request-response-status-code res))
                 (let ((note (request-response-data res))
-                      (version (request-response-header res "X-Simperium-Version")))
-                  (message "key: %s, version: %s, note: %s" key version note)
-                  (simplenote2--save-note key version note)
-                  )))))))))
+                      (version (string-to-number (request-response-header res "X-Simperium-Version"))))
+                  (simplenote2--save-note key version note))))))))))
 
 
 ;;; Push and pull buffer as note
