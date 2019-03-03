@@ -398,7 +398,6 @@ of syncing note.  Notes marked as deleted are not included in the list."
                           (push (cons (cdr (assq 'id e))
                                     (cdr (assq 'v e))) index)))
                       (cdr (assq 'index (request-response-data res))))
-                (message "length: %d, index: %s" (length index) index)
                 (if (assq 'mark (request-response-data res))
                     (simplenote2--get-index-deferred
                      index
@@ -558,7 +557,7 @@ Otherwise, the local modification is discarded."
                    (or (< (nth 3 note-info) (simplenote2--file-mtime file))
                        (nth 7 note-info))
                    (y-or-n-p
-                    "This note appears to have been modified. Do you push it on ahead?"))
+                    "This note appears to have been modified.  Do you push it on ahead? "))
               (simplenote2-push-buffer)
             (save-buffer)
             (deferred:nextc
