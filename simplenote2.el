@@ -718,7 +718,7 @@ are retrieved from the server forcefully."
                         (message "Deleted on server: %s" key)
                         (simplenote2--delete-note-locally file)))))
                 ;; Step2-3: Update notes on local which are older than that on server.
-                (lexical-let (keys-to-update)
+                (let (keys-to-update)
                   (if (not arg)
                       (dolist (elem index)
                         (let* ((key (car elem))
@@ -730,26 +730,17 @@ are retrieved from the server forcefully."
                             (message "Updated on server: %s" key)
                             (push key keys-to-update))))
                     (setq keys-to-update (mapcar (lambda (e) (car e)) index)))
-                  (deferred:$
-                    (deferred:next
-                      (deferred:lambda ()
-                        (when keys-to-update
-                          (let (keys)
-                            (dotimes (i 20) (and keys-to-update
-                                                 (add-to-list 'keys (pop keys-to-update))))
-                            (deferred:nextc
-                              (deferred:parallel
-                                (mapcar (lambda (key) (simplenote2--get-note-deferred key))
-                                        keys))
-                              self)))))
-                    (deferred:nextc it
-                      (lambda ()
-                        (simplenote2--make-tag-list)
-                        (simplenote2-save-notes-info)
-                        (setq simplenote2--sync-process-running nil)
-                        (message "Syncing all notes done")
-                        ;; Refresh the browser
-                        (simplenote2-browser-refresh))))))))))
+                  (deferred:nextc
+                    (deferred:parallel
+                      (mapcar (lambda (key) (simplenote2--get-note-deferred key))
+                              keys-to-update))
+                    (lambda (notes)
+                      (simplenote2--make-tag-list)
+                      (simplenote2-save-notes-info)
+                      (setq simplenote2--sync-process-running nil)
+                      (message "Syncing all notes done")
+                      ;; Refresh the browser
+                      (simplenote2-browser-refresh)))))))))
       (deferred:error it
         (lambda (err)
           (message "Sync notes error: %s" err)
