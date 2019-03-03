@@ -6,7 +6,7 @@
 ;; Author: alpha22jp <alpha22jp@gmail.com>
 ;; Based on: simplenote.el
 ;;     by Konstantinos Efstathiou <konstantinos@efstathiou.gr>
-;; Package-Requires: ((request-deferred "0.2.0"))
+;; Package-Requires: ((request-deferred "0.2.0")(uuidgen "20140918")(unicode-escape "1.1"))
 ;; Package-Version: 20160916.622
 ;; Keywords: simplenote
 ;; Version: 3.0.0
