@@ -134,7 +134,12 @@ to edit them, set this option to `markdown-mode'."
 (defvar simplenote2--filtered-new-notes-list nil)
 (defvar simplenote2--filtered-trash-notes-list nil)
 
-(defconst simplenote2-notes-info-version 1)
+(defconst simplenote2--notes-info-current-version 2)
+(defconst simplenote2--notes-info-update-message
+  "Notes info format is changed.\
+ Please delete notes info directory and restart Emacs.")
+
+(defvar simplenote2-notes-info-version simplenote2--notes-info-current-version)
 
 (defvar simplenote2-filter-note-tag-list nil)
 
@@ -576,7 +581,8 @@ Otherwise, the local modification is discarded."
   "Load note database and create directories if needed."
   (interactive)
   (simplenote2-load-notes-info)
-  (add-hook 'kill-emacs-hook 'simplenote2-save-notes-info)
+  (when (= simplenote2-notes-info-version simplenote2--notes-info-current-version)
+    (add-hook 'kill-emacs-hook 'simplenote2-save-notes-info))
   (when (not (file-exists-p simplenote2-directory))
     (make-directory simplenote2-directory t))
   (when (not (file-exists-p (simplenote2--notes-dir)))
@@ -775,11 +781,13 @@ are retrieved from the server forcefully."
 (defun simplenote2-browse ()
   "Show Simplenote browser screen."
   (interactive)
-  (when (not (file-exists-p simplenote2-directory))
-    (make-directory simplenote2-directory t))
-  (switch-to-buffer "*Simplenote*")
-  (simplenote2-browser-mode)
-  (goto-char 1))
+  (if (< simplenote2-notes-info-version simplenote2--notes-info-current-version)
+      (message simplenote2--notes-info-update-message)
+    (when (not (file-exists-p simplenote2-directory))
+      (make-directory simplenote2-directory t))
+    (switch-to-buffer "*Simplenote*")
+    (simplenote2-browser-mode)
+    (goto-char 1)))
 
 (defun simplenote2-browser-refresh ()
   "Refresh Simplenote browser screen."
