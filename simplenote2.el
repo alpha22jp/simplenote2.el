@@ -287,14 +287,25 @@ LIMIT specifies the limit of variables to dump."
   "Save info and content gotten from server for note specified by KEY, VERSION and NOTE."
   (let ((file (simplenote2--filename-for-note key))
         (text (decode-coding-string (cdr (assq 'content note)) 'utf-8))
-        (modifydate (cdr (assq 'modificationDate note))))
+        (createdate (cdr (assq 'creationDate note)))
+        (modifydate (cdr (assq 'modificationDate note)))
+        (tags (cdr (assq 'tags note)))
+        (systemtags (cdr (assq 'systemTags note))))
+    ;; Save note content to local file
     (write-region text nil file nil)
-    (set-file-times file (seconds-to-time modifydate)))
-  (delete (assq 'content note) note)
-  (delete (assq 'deleted note) note)
-  (push (cons 'version version) note)
-  ;; Save note information to 'simplenote2-notes-info
-  (puthash key note simplenote2-notes-info)
+    (set-file-times file (seconds-to-time modifydate))
+    ;; Save note information to 'simplenote2-notes-info
+    (puthash key (list t ;; syncnum (now this is used as a flag that shows the note is once synced)
+                       version ;; version
+                       createdate ;; createdate
+                       modifydate ;; modifydate
+                       (append tags nil) ;; tags (converted from array to list)
+                       (simplenote2--tag-existp "markdown" systemtags) ;; markdown
+                       (simplenote2--tag-existp "pinned" systemtags);; pinned
+                       nil ;; localy modified flag
+                       (simplenote2--tag-existp "published" systemtags) ;; published
+                       )
+             simplenote2-notes-info))
   key)
 
 
@@ -419,31 +430,36 @@ of syncing note.  Notes marked as deleted are not included in the list."
 If DELETE is non-nil, this function marks note as deleted."
   (lexical-let* ((file file)
                  (delete delete)
-                 (note-info (simplenote2--get-note-info (file-name-nondirectory file)))
+                 (key (file-name-nondirectory file))
+                 (note-info (simplenote2--get-note-info key))
                  (modifydate (simplenote2--file-mtime file))
-                 (key (if note-info (file-name-nondirectory file) nil)))
+                 (createdate (or (nth 2 note-info) modifydate))
+                 (tags (or (nth 4 note-info) []))
+                 (post-data))
     (deferred:nextc
       (simplenote2--get-token-deferred)
       (lambda (token)
         (deferred:$
-          ;; Set key, "creationDate" and other missing items for new note
+          (push (cons 'content (simplenote2--get-file-string file)) post-data)
+          (push (cons 'deleted (if delete t :json-false)) post-data)
+          (push (cons 'creationDate createdate) post-data)
+          (push (cons 'modificationDate modifydate) post-data)
+          (push (cons 'tags tags) post-data)
+          (let ((systemtags []))
+            (when (nth 5 note-info) (setf systemtags (vconcat systemtags ["markdown"])))
+            (when (nth 6 note-info) (setf systemtags (vconcat systemtags ["pinned"])))
+            (when (nth 8 note-info) (setf systemtags (vconcat systemtags ["published"])))
+            (push (cons 'systemTags systemtags) post-data))
           (unless note-info
-            (setq key (replace-regexp-in-string "-" "" (uuidgen-4)))
-            (push (cons 'creationDate modifydate) note-info)
-            (push (cons 'modificationDate modifydate) note-info)
-            (push '(tags . []) note-info)
-            (push '(systemTags . []) note-info)
-            (push '(shareURL . "") note-info)
-            (push '(publishURL . "") note-info))
-          (push (cons 'content (simplenote2--get-file-string file)) note-info)
-          (push (cons 'deleted (if delete t :json-false)) note-info)
-          (setcdr (assq 'modificationDate note-info) modifydate)
-          (message "post-data: %s" (json-encode note-info))
+            (setq key (replace-regexp-in-string "-" "" (uuidgen-4))))
+          (unless (nth 0 note-info)
+            (push '(shareURL . "") post-data)
+            (push '(publishURL . "") post-data))
           (request-deferred
            (concat simplenote2--api-server-url "i/" key)
            :type "POST"
            :params '(("response" . "1"))
-           :data (unicode-escape (json-encode note-info))
+           :data (unicode-escape (json-encode post-data))
            :headers (list (cons "X-Simperium-Token" simplenote2--token)
                           '("Content-Type" . "application/json"))
            :parser 'json-read)
