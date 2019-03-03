@@ -195,7 +195,7 @@ to edit them, set this option to `markdown-mode'."
 
 (defun simplenote2--get-new-note-files ()
   "Return list of files in new note directory."
-  (directory-files (simplenote2--new-notes-dir) t "^note-[0-9]+$"))
+  (directory-files (simplenote2--new-notes-dir) t "^[a-zA-Z0-9_\\-]+$"))
 
 (defun simplenote2--make-tag-list ()
   "Return list of tags currently used."
@@ -1129,17 +1129,13 @@ Reset pinned flag if ARG is given."
 (defun simplenote2--create-note-locally ()
   "Create note locally, creating file on new note directory."
   (interactive)
-  (let (new-filename counter)
-    (setq counter 0)
-    (setq new-filename (concat (simplenote2--new-notes-dir) (format "note-%d" counter)))
-    (while (file-exists-p new-filename)
-      (setq counter (1+ counter))
-      (setq new-filename (concat (simplenote2--new-notes-dir) (format "note-%d" counter))))
+  (let* ((key (replace-regexp-in-string "-" "" (uuidgen-4)))
+         (new-filename (concat (simplenote2--new-notes-dir) key)))
     (write-region "New note" nil new-filename nil)
     ;; Save note information to 'simplenote2-notes-info
     (let ((date (simplenote2--file-mtime new-filename)))
       (puthash (file-name-nondirectory new-filename)
-               (list 0 0 date date nil nil nil nil) simplenote2-notes-info))
+               (list nil 0 date date nil nil nil nil nil) simplenote2-notes-info))
     (simplenote2-browser-refresh)
     (simplenote2--open-note new-filename t)))
 
