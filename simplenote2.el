@@ -436,6 +436,7 @@ If DELETE is non-nil, this function marks note as deleted."
                  (delete delete)
                  (key (file-name-nondirectory file))
                  (note-info (simplenote2--get-note-info key))
+                 (version (nth 1 note-info))
                  (modifydate (simplenote2--file-mtime file))
                  (createdate (or (nth 2 note-info) modifydate))
                  (tags (or (nth 4 note-info) []))
@@ -460,7 +461,8 @@ If DELETE is non-nil, this function marks note as deleted."
             (push '(shareURL . "") post-data)
             (push '(publishURL . "") post-data))
           (request-deferred
-           (concat simplenote2--api-server-url "i/" key)
+           (concat simplenote2--api-server-url "i/" key
+                   (if (and version (> version 0)) (concat "/v/" (number-to-string version)) nil))
            :type "POST"
            :params '(("response" . "1"))
            :data (unicode-escape (json-encode post-data))
