@@ -115,11 +115,17 @@
           ((nth 6 note-info-b) nil)
           (t (> (nth 3 note-info-a) (nth 3 note-info-b))))))
 
+(defun simplenote2--view-note (file)
+  "View simplenote note specified by FILE."
+  (view-file-other-window file)
+  (simplenote2-note-mode)
+  (rename-buffer (simplenote2--note-headline (buffer-string))))
+
 (defun simplenote2-list-open-note ()
   "Open note at which the current line points."
   (interactive)
   (let ((key (tabulated-list-get-id)))
-    (simplenote2--open-note
+    (simplenote2--view-note
      (if (simplenote2--is-note-new key)
          (simplenote2--filename-for-newnote key)
        (simplenote2--filename-for-note key)))))
