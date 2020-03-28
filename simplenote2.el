@@ -246,7 +246,7 @@ to edit them, set this option to `markdown-mode'."
 
 (defsubst simplenote2--trunc-list (l n)
   "Return from L the list of its first N elements."
-  (let (nl)
+  (let ((nl))
     (while (and l (> n 0))
       (setq nl (cons (car l) nl)
             n  (1- n)
@@ -812,7 +812,7 @@ are retrieved from the server forcefully."
   "Display list of the notes specified by PASSED-FILES."
   ;; If we're not searching from the filter, we need all of the files. If we
   ;; are, then we need *only* those files from that match the pattern
-  (let (files)
+  (let ((files))
     (when passed-files
       (setq files (sort passed-files (lambda (p1 p2) (simplenote2--file-newer-p (car p1) (car p2)))))
       (setq files (sort files (lambda (p1 p2) (simplenote2--pinned-note-p (car p1) (car p2)))))
@@ -926,7 +926,7 @@ prefix ARG is specified, this function resets the filter already set."
   (interactive "P")
   (setq simplenote2-filter-note-tag-list nil)
   (when (not arg)
-    (let (tag)
+    (let ((tag))
       (setq tag (completing-read "Input tag: " simplenote2-tag-list))
       (while (not (string= tag ""))
         (push tag simplenote2-filter-note-tag-list)
@@ -1006,7 +1006,7 @@ Reset pinned flag if ARG is given."
 
 (defun simplenote2--file-newer-p (file1 file2)
   "Return whether FILE1 is newer than FILE2."
-  (let (time1 time2)
+  (let ((time1 time2))
     (setq time1 (nth 5 (file-attributes file1)))
     (setq time2 (nth 5 (file-attributes file2)))
     (time-less-p time2 time1)))
