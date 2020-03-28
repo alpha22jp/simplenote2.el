@@ -288,9 +288,9 @@ LIMIT specifies the limit of variables to dump."
   (when (file-readable-p (simplenote2--filename-for-notes-info))
     (load-file (simplenote2--filename-for-notes-info))))
 
-(defun simplenote2--save-note (key version note)
-  "Save info and content gotten from server for note specified by KEY, VERSION and NOTE."
-  (let ((file (simplenote2--filename-for-note key))
+(defun simplenote2--save-note (id version note)
+  "Save info and content gotten from server for note specified by ID, VERSION and NOTE."
+  (let ((file (simplenote2--filename-for-note id))
         (text (decode-coding-string (cdr (assq 'content note)) 'utf-8))
         (createdate (cdr (assq 'creationDate note)))
         (modifydate (cdr (assq 'modificationDate note)))
@@ -300,18 +300,18 @@ LIMIT specifies the limit of variables to dump."
     (write-region text nil file nil)
     (set-file-times file (seconds-to-time modifydate))
     ;; Save note information to 'simplenote2-notes-info
-    (puthash key (list t ;; syncnum (now this is used as a flag that shows the note is once synced)
-                       version ;; version
-                       createdate ;; createdate
-                       modifydate ;; modifydate
-                       (append tags nil) ;; tags (converted from array to list)
-                       (simplenote2--tag-existp "markdown" systemtags) ;; markdown
-                       (simplenote2--tag-existp "pinned" systemtags);; pinned
-                       nil ;; localy modified flag
-                       (simplenote2--tag-existp "published" systemtags) ;; published
-                       )
+    (puthash id (list t ;; syncnum (now this is used as a flag that shows the note is once synced)
+                      version ;; version
+                      createdate ;; createdate
+                      modifydate ;; modifydate
+                      (append tags nil) ;; tags (converted from array to list)
+                      (simplenote2--tag-existp "markdown" systemtags) ;; markdown
+                      (simplenote2--tag-existp "pinned" systemtags);; pinned
+                      nil ;; localy modified flag
+                      (simplenote2--tag-existp "published" systemtags) ;; published
+                      )
              simplenote2-notes-info))
-  key)
+  id)
 
 
 ;;; Simplenote authentication
