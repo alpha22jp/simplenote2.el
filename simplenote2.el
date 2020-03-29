@@ -659,7 +659,8 @@ CREATE-FLAG shows if the file is newly created.  The major mode of the
       (mapc (lambda (id) (simplenote2--get-note id)) ids-to-update)
       (simplenote2--make-tag-list)
       (simplenote2-save-notes-info)))
-  (simplenote2-browser-refresh))
+  (simplenote2-browser-refresh)
+  (message "Sync all notes done"))
 
 
 ;;; Simplenote browser
