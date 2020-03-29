@@ -921,9 +921,8 @@ Reset pinned flag if ARG is given."
 
 (defun simplenote2--file-newer-p (file1 file2)
   "Return whether FILE1 is newer than FILE2."
-  (let ((time1 time2))
-    (setq time1 (nth 5 (file-attributes file1)))
-    (setq time2 (nth 5 (file-attributes file2)))
+  (let ((time1 (nth 5 (file-attributes file1)))
+        (time2 (nth 5 (file-attributes file2))))
     (time-less-p time2 time1)))
 
 (defun simplenote2--pinned-note-p (file1 file2)
