@@ -399,7 +399,7 @@ of syncing note.  Notes marked as deleted are not included in the list."
               (if (request-response-error-thrown res)
                   (progn (message "Could not get index") t)
                 (mapc (lambda (e)
-                        (if (equal (cdr (assq 'deleted (cdr (assq 'd e)))) :json-false)
+                        (if (member (cdr (assq 'deleted (cdr (assq 'd e)))) '(:json-false 0))
                           (push (cons (cdr (assq 'id e))
                                     (cdr (assq 'v e))) index)))
                       (cdr (assq 'index (request-response-data res))))
