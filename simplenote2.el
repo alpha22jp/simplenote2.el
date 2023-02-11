@@ -279,6 +279,7 @@ LIMIT specifies the limit of variables to dump."
         (simplenote2--dump-variable 'simplenote2-notes-info)
         (simplenote2--dump-variable 'simplenote2-tag-list)
         (simplenote2--dump-variable 'simplenote2-notes-info-version)
+        (pp-buffer)
         (write-file (simplenote2--filename-for-notes-info))
         nil)
     (error (warn "Simplenote2: %s" (error-message-string error)))))
